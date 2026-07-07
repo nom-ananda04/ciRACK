@@ -1,0 +1,885 @@
+title: HARDWARE CI RACK
+window_title: null
+logo_path: null
+timeline:
+  show: false
+  display: relative
+  pixels_per_tick: 0.0
+  milestones: []
+streaming:
+  buffer_size: 5000
+  timeline: null
+  playback_speed: null
+  window: null
+  persistence:
+  - enabled: 'true'
+    data_source_rid: ri.catalog.cerulean-staging.dataset.bac14f6b-c6fa-4d5c-a300-40ce66705796
+    file_path:
+      value_id: dc_pannel
+    streams:
+    - id: cdaq9170_39045407
+      tags: {}
+    - id: usb6002_31268519
+      tags: {}
+  channels:
+  - channel: cdaq9170_39045407.relay_control/port0/line0
+  - channel: cdaq9170_39045407.relay_control/port0/line1
+  - channel: cdaq9170_39045407.relay_control/port0/line2
+  - channel: cdaq9170_39045407.relay_control/port0/line3
+  - channel: cdaq9170_39045407.relay_control/port0/line4
+  - channel: cdaq9170_39045407.relay_control/port0/line5
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao0
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao0_amplitude
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao0_chirp_time
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao0_duty_cycle
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao0_frequency
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao0_mode
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao0_offset
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao0_start_freq
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao0_stop_freq
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao0_value
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao2
+  - channel: cdaq9174_29480738.cDAQ1Mod1/ao3
+  - channel: cdaq9174_29480738.cDAQ1Mod2/ai0
+  - channel: cdaq9174_29480738.cDAQ1Mod2/ai1
+  - channel: cdaq9174_29480738.cDAQ1Mod2/ai12
+  - channel: cdaq9174_29480738.cDAQ1Mod2/ai2
+  - channel: cdaq9174_29480738.cDAQ1Mod2/ai3
+  - channel: cdaq9174_29480738.cDAQ1Mod3/ai0
+  - channel: cdaq9174_29480738.cDAQ1Mod3/ai1
+  - channel: cdaq9174_29480738.cDAQ1Mod3/ai12
+  - channel: cdaq9174_29480738.cDAQ1Mod3/ai2
+  - channel: cdaq9174_29480738.cDAQ1Mod3/ai3
+  - channel: cdaq9174_29480738.cDAQ1Mod4/port0/line4
+  - channel: cdaq9174_29480738.cDAQ1Mod4/port0/line5
+  - channel: daq_tray.route_dac1_port21
+  - channel: daq_tray.route_dac1_port22
+  - channel: daq_tray.route_dac1_port23
+  - channel: daq_tray.route_dac2_port21
+  - channel: daq_tray.route_dac2_port22
+  - channel: daq_tray.route_dac2_port23
+  - channel: daq_tray.route_dac3_port21
+  - channel: daq_tray.route_dac3_port22
+  - channel: daq_tray.route_dac3_port23
+  - channel: daq_tray.route_dac4_port21
+  - channel: daq_tray.route_dac4_port22
+  - channel: daq_tray.route_dac4_port23
+  - channel: daq_tray.route_dac5_port21
+  - channel: daq_tray.route_dac5_port22
+  - channel: daq_tray.route_dac5_port23
+  - channel: dio_tray.di_2
+  - channel: dio_tray.di_3
+  - channel: dio_tray.di_4
+  - channel: dio_tray.di_5
+  - channel: dio_tray.di_6
+  - channel: dio_tray.do_drive
+  - channel: t4_440020473.AIN0
+  - channel: t4_440020473.AIN1
+  - channel: t4_440020473.AIN2
+  - channel: t4_440020473.AIN3
+  - channel: t4_440020473.CIO0
+  - channel: t4_440020473.CIO1
+  - channel: t4_440020473.CIO2
+  - channel: t4_440020473.CIO3
+  - channel: t4_440020473.DAC0
+  - channel: t4_440020473.DAC0_amplitude
+  - channel: t4_440020473.DAC0_chirp_time
+  - channel: t4_440020473.DAC0_duty_cycle
+  - channel: t4_440020473.DAC0_frequency
+  - channel: t4_440020473.DAC0_mode
+  - channel: t4_440020473.DAC0_offset
+  - channel: t4_440020473.DAC0_start_freq
+  - channel: t4_440020473.DAC0_stop_freq
+  - channel: t4_440020473.DAC0_value
+  - channel: t4_440020473.DAC1
+  - channel: t4_440020473.DAC1_amplitude
+  - channel: t4_440020473.DAC1_chirp_time
+  - channel: t4_440020473.DAC1_duty_cycle
+  - channel: t4_440020473.DAC1_frequency
+  - channel: t4_440020473.DAC1_mode
+  - channel: t4_440020473.DAC1_offset
+  - channel: t4_440020473.DAC1_start_freq
+  - channel: t4_440020473.DAC1_stop_freq
+  - channel: t4_440020473.DAC1_value
+  - channel: t7_470041016.AIN0
+  - channel: t7_470041016.AIN1
+  - channel: t7_470041016.AIN2
+  - channel: t7_470041016.AIN3
+  - channel: t7_470041016.CIO0
+  - channel: t7_470041016.CIO1
+  - channel: t7_470041016.CIO2
+  - channel: t7_470041016.CIO3
+  - channel: t7_470041016.DAC0
+  - channel: t7_470041016.DAC0_amplitude
+  - channel: t7_470041016.DAC0_chirp_time
+  - channel: t7_470041016.DAC0_duty_cycle
+  - channel: t7_470041016.DAC0_frequency
+  - channel: t7_470041016.DAC0_mode
+  - channel: t7_470041016.DAC0_offset
+  - channel: t7_470041016.DAC0_start_freq
+  - channel: t7_470041016.DAC0_stop_freq
+  - channel: t7_470041016.DAC0_value
+  - channel: t7_470041016.DAC1
+  - channel: t7_470041016.DAC1_amplitude
+  - channel: t7_470041016.DAC1_chirp_time
+  - channel: t7_470041016.DAC1_duty_cycle
+  - channel: t7_470041016.DAC1_frequency
+  - channel: t7_470041016.DAC1_mode
+  - channel: t7_470041016.DAC1_offset
+  - channel: t7_470041016.DAC1_start_freq
+  - channel: t7_470041016.DAC1_stop_freq
+  - channel: t7_470041016.DAC1_value
+  - channel: t7_470041016.FIO4
+  - channel: t8_480011030.AIN0
+  - channel: t8_480011030.AIN1
+  - channel: t8_480011030.AIN2
+  - channel: t8_480011030.AIN3
+  - channel: t8_480011030.AIN4
+  - channel: t8_480011030.CIO0
+  - channel: t8_480011030.CIO1
+  - channel: t8_480011030.CIO2
+  - channel: t8_480011030.CIO3
+  - channel: t8_480011030.DAC0
+  - channel: t8_480011030.DAC0_amplitude
+  - channel: t8_480011030.DAC0_chirp_time
+  - channel: t8_480011030.DAC0_duty_cycle
+  - channel: t8_480011030.DAC0_frequency
+  - channel: t8_480011030.DAC0_mode
+  - channel: t8_480011030.DAC0_offset
+  - channel: t8_480011030.DAC0_start_freq
+  - channel: t8_480011030.DAC0_stop_freq
+  - channel: t8_480011030.DAC0_value
+  - channel: t8_480011030.DAC1
+  - channel: t8_480011030.DAC1_amplitude
+  - channel: t8_480011030.DAC1_chirp_time
+  - channel: t8_480011030.DAC1_duty_cycle
+  - channel: t8_480011030.DAC1_frequency
+  - channel: t8_480011030.DAC1_mode
+  - channel: t8_480011030.DAC1_offset
+  - channel: t8_480011030.DAC1_start_freq
+  - channel: t8_480011030.DAC1_stop_freq
+  - channel: t8_480011030.DAC1_value
+  - channel: usb6421_41477387.Dev1/ai0
+  - channel: usb6421_41477387.Dev1/ai1
+  - channel: usb6421_41477387.Dev1/ai12
+  - channel: usb6421_41477387.Dev1/ai2
+  - channel: usb6421_41477387.Dev1/ai3
+  - channel: usb6421_41477387.Dev1/ai4
+  - channel: usb6421_41477387.Dev1/ai7
+  - channel: usb6421_41477387.Dev1/ao0
+  - channel: usb6421_41477387.Dev1/ao0_amplitude
+  - channel: usb6421_41477387.Dev1/ao0_chirp_time
+  - channel: usb6421_41477387.Dev1/ao0_duty_cycle
+  - channel: usb6421_41477387.Dev1/ao0_frequency
+  - channel: usb6421_41477387.Dev1/ao0_mode
+  - channel: usb6421_41477387.Dev1/ao0_offset
+  - channel: usb6421_41477387.Dev1/ao0_start_freq
+  - channel: usb6421_41477387.Dev1/ao0_stop_freq
+  - channel: usb6421_41477387.Dev1/ao0_value
+  - channel: usb6421_41477387.Dev1/ao1
+  - channel: usb6421_41477387.Dev1/ao1_amplitude
+  - channel: usb6421_41477387.Dev1/ao1_chirp_time
+  - channel: usb6421_41477387.Dev1/ao1_duty_cycle
+  - channel: usb6421_41477387.Dev1/ao1_frequency
+  - channel: usb6421_41477387.Dev1/ao1_mode
+  - channel: usb6421_41477387.Dev1/ao1_offset
+  - channel: usb6421_41477387.Dev1/ao1_start_freq
+  - channel: usb6421_41477387.Dev1/ao1_stop_freq
+  - channel: usb6421_41477387.Dev1/ao1_value
+  - channel: usb6421_41477387.Dev1/port0/line0
+  - channel: usb6421_41477387.Dev1/port0/line1
+  - channel: usb6421_41477387.Dev1/port0/line2
+  - channel: usb6421_41477387.Dev1/port0/line3
+python:
+  packages:
+  - instro
+  - pyvisa
+  wheelhouse: null
+on_load: null
+on_unload: null
+tiles:
+- layout: tabs
+  tabs:
+  - title: ANALOG OUT - IN TEST
+    allow_popout: true
+    tile:
+      layout: grid
+      rows:
+      - height: 0.6592272
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 11fed5c5-6a57-414f-a6cc-fceb8d36fd04
+            title: AIN1 - T4, T7, T8
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_ids:
+              - t4_440020473
+              - t7_470041016
+              - t8_480011030
+              channels:
+              - t4_440020473.AIN1
+              - t7_470041016.AIN1
+              - t8_480011030.AIN1
+              colors: []
+              legend_placement: bottom_left
+              y_label: 'Volts '
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: 0.6146417
+        columns:
+        - width: 0.6173412
+          tile:
+            layout: pane
+            id: 52fe8507-7b5c-4141-bf7c-79d7b600517b
+            title: AI1 - NI
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_ids:
+              - usb6421_41477387
+              - cdaq9174_29480738
+              channels:
+              - usb6421_41477387.Dev1/ai1
+              - cdaq9174_29480738.cDAQ1Mod2/ai0
+              - cdaq9174_29480738.cDAQ1Mod3/ai0
+              colors: []
+              legend_placement: bottom_left
+              y_label: 'Volt '
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+        - width: 0.8826588
+          tile:
+            layout: pane
+            id: 7188c6ea-aaa2-45d8-879f-ed1f49303a99
+            title: AO0
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_ids:
+              - usb6421_41477387
+              - cdaq9174_29480738
+              - t4_440020473
+              - t7_470041016
+              - t8_480011030
+              channels:
+              - usb6421_41477387.Dev1/ao0
+              - cdaq9174_29480738.cDAQ1Mod1/ao0
+              - t4_440020473.DAC0
+              - t7_470041016.DAC0
+              - t8_480011030.DAC0
+              colors: []
+              legend_placement: bottom_left
+              y_label: Volts
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: 0.7261302
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: b94f968f-f0d1-47aa-8ca1-462bd0a0d48e
+            title: Script Controls
+            direction: vertical
+            should_fill: true
+            elements:
+            - controls: script_table
+              scripts:
+              - label: DAQ Control
+                path: C:\Users\Nominal User\Downloads\btop_daq_control.py
+                args: []
+                max_log_lines: 10000
+                id: null
+              show_output_column: true
+  - title: FGEN TEST
+    allow_popout: true
+    tile:
+      layout: grid
+      rows:
+      - height: 1.0
+        columns:
+        - width: 1.081318
+          tile:
+            layout: grid
+            rows:
+            - height: 1.0
+              columns:
+              - width: null
+                tile:
+                  layout: pane
+                  id: 36a199a3-d488-4610-874f-d20ff5d08f00
+                  title: CDAQ MODULES
+                  direction: vertical
+                  should_fill: true
+                  elements:
+                  - plot: line
+                    stream_id: cdaq9174_29480738
+                    channels:
+                    - cDAQ1Mod2/ai1
+                    - cDAQ1Mod2/ai2
+                    - cDAQ1Mod3/ai1
+                    - cDAQ1Mod3/ai2
+                    colors: []
+                    legend_placement: bottom_left
+                    y_label: cdaq9174_29480738.cDAQ1Mod2/ai1
+                    x_format: timestamp
+                    x_time_display: Local
+                    x_scale: linear
+                    y_scale: linear
+                    time_window: 30s
+            - height: 1.0
+              columns:
+              - width: null
+                tile:
+                  layout: pane
+                  id: 54eb0580-b93d-48a6-95b4-72ff88800448
+                  title: T4
+                  direction: vertical
+                  should_fill: true
+                  elements:
+                  - plot: line
+                    stream_id: t4_440020473
+                    channels:
+                    - AIN2
+                    - AIN3
+                    colors: []
+                    legend_placement: bottom_left
+                    y_label: t4_440020473.AIN2
+                    x_format: timestamp
+                    x_time_display: Local
+                    x_scale: linear
+                    y_scale: linear
+                    time_window: 30s
+        - width: 0.9186821
+          tile:
+            layout: pane
+            id: b74d23de-c317-4455-8d99-45c95ff70c6a
+            title: USB-6421
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: usb6421_41477387
+              channels:
+              - Dev1/ai2
+              - Dev1/ai3
+              colors: []
+              legend_placement: bottom_left
+              y_label: usb6421_41477387.Dev1/ai2
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: 1.0
+        columns:
+        - width: 0.73275834
+          tile:
+            layout: grid
+            rows:
+            - height: 0.9744853
+              columns:
+              - width: null
+                tile:
+                  layout: pane
+                  id: be6950b3-af45-4c1b-ae7e-161f68088783
+                  title: T7
+                  direction: vertical
+                  should_fill: true
+                  elements:
+                  - plot: line
+                    stream_id: t7_470041016
+                    channels:
+                    - AIN2
+                    - AIN3
+                    colors: []
+                    legend_placement: bottom_left
+                    y_label: t7_470041016.AIN2
+                    x_format: timestamp
+                    x_time_display: Local
+                    x_scale: linear
+                    y_scale: linear
+                    time_window: 30s
+            - height: 1.0255146
+              columns:
+              - width: null
+                tile:
+                  layout: pane
+                  id: 70a5f3be-bbdd-45fc-9999-42d6d5e7c495
+                  title: T8
+                  direction: vertical
+                  should_fill: true
+                  elements:
+                  - plot: line
+                    stream_id: t8_480011030
+                    channels:
+                    - AIN2
+                    - AIN3
+                    colors: []
+                    legend_placement: bottom_left
+                    y_label: t8_480011030.AIN2
+                    x_format: timestamp
+                    x_time_display: Local
+                    x_scale: linear
+                    y_scale: linear
+                    time_window: 30s
+        - width: 1.2672409
+          tile:
+            layout: pane
+            id: f8539ced-3d7f-4c40-a9ec-b9ef20da8ef8
+            title: Script Controls
+            direction: vertical
+            should_fill: true
+            elements:
+            - input: text
+              id: fgen_ports
+              label: Source ports (comma-separated, e.g. 1,2,3)
+              default: 1,2,3,4,5
+            - input: checkbox
+              id: run_fgen
+              label: Run FGEN test (check to trigger; uncheck & re-check to run again)
+            - controls: script_table
+              scripts:
+              - label: FGEN test
+                path: C:\Users\Nominal User\Downloads\btop_fgen_diff_control.py
+                args: []
+                max_log_lines: 10000
+                id: null
+              show_output_column: true
+  - title: DIFF TEST
+    allow_popout: true
+    tile:
+      layout: grid
+      rows:
+      - height: 1.0
+        columns:
+        - width: 1.0
+          tile:
+            layout: pane
+            id: ca14b588-3118-49e2-a068-a0e5fe5abfd0
+            title: T7_DIFF
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: t7_470041016
+              channels:
+              - AIN4
+              - AIN5
+              colors: []
+              legend_placement: bottom_left
+              y_label: t7_470041016.AIN4
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+        - width: 1.0
+          tile:
+            layout: grid
+            rows:
+            - height: 1.0
+              columns:
+              - width: null
+                tile:
+                  layout: pane
+                  id: 87cd5b1c-f1fb-4c8a-8d06-8016e912b379
+                  title: CDAQ MODULES
+                  direction: vertical
+                  should_fill: true
+                  elements:
+                  - plot: line
+                    stream_id: cdaq9174_29480738
+                    channels:
+                    - cDAQ1Mod2/ai12
+                    - cDAQ1Mod2/ai3
+                    - cDAQ1Mod3/ai3
+                    colors: []
+                    legend_placement: bottom_left
+                    y_label: cdaq9174_29480738.cDAQ1Mod2/ai12
+                    x_format: timestamp
+                    x_time_display: Local
+                    x_scale: linear
+                    y_scale: linear
+                    time_window: 30s
+            - height: 1.0
+              columns:
+              - width: null
+                tile:
+                  layout: pane
+                  id: d3cbe072-be9d-411a-8ad0-deacca7b835f
+                  title: USB_6421
+                  direction: vertical
+                  should_fill: true
+                  elements:
+                  - plot: line
+                    stream_id: usb6421_41477387
+                    channels:
+                    - Dev1/ai4
+                    - Dev1/ai12
+                    colors: []
+                    legend_placement: bottom_left
+                    y_label: usb6421_41477387.Dev1/ai4
+                    x_format: timestamp
+                    x_time_display: Local
+                    x_scale: linear
+                    y_scale: linear
+                    time_window: 30s
+      - height: 0.5
+        columns:
+        - width: 0.83741164
+          tile:
+            layout: pane
+            id: 59531d65-b725-4458-a7b1-84982d3609b3
+            title: T8_DIFF
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: t8_480011030
+              channels:
+              - AIN4
+              colors: []
+              legend_placement: bottom_left
+              y_label: t8_480011030.AIN4
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+        - width: 1.1625881
+          tile:
+            layout: pane
+            id: ebb26358-b41a-46e3-87ec-122848b99366
+            title: Script Controls
+            direction: vertical
+            should_fill: true
+            elements:
+            - input: text
+              id: diff_ports
+              label: Source ports (comma-separated, e.g. 1,2,3)
+              default: 1,2,3,4,5
+            - input: checkbox
+              id: run_diff
+              label: Run DIFF test (check to trigger; uncheck & re-check to run again)
+            - controls: script_table
+              scripts:
+              - label: DIFF test
+                path: C:\Users\Nominal User\Downloads\btop_fgen_diff_control.py
+                args: []
+                max_log_lines: 10000
+                id: null
+              show_output_column: true
+  - title: LOOPBACK
+    allow_popout: true
+    tile:
+      layout: grid
+      rows:
+      - height: null
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 2aaff5a7-4807-4a25-b72c-6736ed390c28
+            title: T4
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: t4_440020473
+              channels:
+              - DAC1
+              - AIN0
+              colors: []
+              legend_placement: bottom_left
+              y_label: t4_440020473.DAC1
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+        - width: 1.0
+          tile:
+            layout: pane
+            id: 4bb1dc94-cfc3-443d-8ee2-06d342f7dacf
+            title: T8
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: t8_480011030
+              channels:
+              - AIN0
+              - DAC1
+              colors: []
+              legend_placement: bottom_left
+              y_label: t8_480011030.AIN0
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: 1.0
+        columns:
+        - width: 1.0
+          tile:
+            layout: pane
+            id: a1c84f31-8096-4d1f-83ff-ec1ad1c8d5d2
+            title: T7
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: t7_470041016
+              channels:
+              - AIN0
+              - DAC1
+              colors: []
+              legend_placement: bottom_left
+              y_label: t7_470041016.AIN0
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+        - width: 1.0
+          tile:
+            layout: pane
+            id: 7b2e5b4a-14d1-4d64-8d0d-1363900d15d2
+            title: USB-6421
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: usb6421_41477387
+              channels:
+              - Dev1/ao1
+              - Dev1/ai0
+              colors: []
+              legend_placement: bottom_left
+              y_label: usb6421_41477387.Dev1/ao1
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+  - title: DIGITAL IO
+    allow_popout: true
+    tile:
+      layout: grid
+      rows:
+      - height: 0.5
+        columns:
+        - width: 1.4391515
+          tile:
+            layout: pane
+            id: 670789ff-1dbd-44e6-9e4f-2e6b9627f78c
+            title: SWITCH INPUT
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: dio_tray
+              channels:
+              - di_2
+              - di_3
+              - di_4
+              - di_5
+              - di_6
+              colors: []
+              legend_placement: bottom_left
+              y_label: dio_tray.di_2
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+        - width: 0.5608486
+          tile:
+            layout: pane
+            id: 65e338e0-4c33-441b-b9c5-34da84e48bea
+            title: SWITCH OUTPUT
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: dio_tray
+              channels:
+              - do_drive
+              colors: []
+              legend_placement: bottom_left
+              y_label: dio_tray.do_drive
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: 0.5
+        columns:
+        - width: 0.79802
+          tile:
+            layout: pane
+            id: aaebf7e1-28bc-4027-9077-d6a2e00a9134
+            title: ALL OUTPUTS - DAQS
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_ids:
+              - t4_440020473
+              - t7_470041016
+              - t8_480011030
+              - cdaq9174_29480738
+              - usb6421_41477387
+              channels:
+              - t4_440020473.CIO1
+              - t7_470041016.CIO1
+              - t8_480011030.CIO1
+              - cdaq9174_29480738.cDAQ1Mod4/port0/line1
+              - usb6421_41477387.Dev1/port0/line1
+              colors: []
+              legend_placement: bottom_left
+              y_label: t4_440020473.CIO1
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+        - width: 0.20197995
+          tile:
+            layout: pane
+            id: eabe91db-81d7-48ed-9b1a-121ed8f4550d
+            title: ALL INPUTS - DAQS
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_ids:
+              - t4_440020473
+              - t7_470041016
+              - t8_480011030
+              - usb6421_41477387
+              - cdaq9174_29480738
+              channels:
+              - t4_440020473.CIO0
+              - t7_470041016.CIO0
+              - t8_480011030.CIO0
+              - usb6421_41477387.Dev1/port0/line0
+              - cdaq9174_29480738.cDAQ1Mod4/port0/line0
+              colors: []
+              legend_placement: bottom_left
+              y_label: t4_440020473.CIO0
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: 0.5
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: dac191a0-606f-4552-b8e1-0530a6eeac79
+            title: Script Controls
+            direction: vertical
+            should_fill: true
+            elements:
+            - controls: script_table
+              scripts:
+              - label: Digital Input Test (DI2-DI6)
+                path: C:\Users\Nominal User\Downloads\di_raster_scan.py
+                args: []
+                max_log_lines: 10000
+                id: null
+              - label: Digital Output Test (DO0)
+                path: C:\Users\Nominal User\Downloads\do_send_output.py
+                args: []
+                max_log_lines: 10000
+                id: null
+              show_output_column: true
+  - title: PSU TRAY
+    allow_popout: true
+    tile:
+      layout: grid
+      rows:
+      - height: null
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 22de0ea3-10eb-457b-8485-4c9ba6429305
+            title: RELAY CONTROL
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: cdaq9170_39045407
+              channels:
+              - relay_control/port0/line0
+              - relay_control/port0/line1
+              - relay_control/port0/line2
+              - relay_control/port0/line3
+              - relay_control/port0/line4
+              - relay_control/port0/line5
+              colors: []
+              legend_placement: bottom_left
+              y_label: cdaq9170_39045407.relay_control/port0/line0
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: null
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 16c4490e-eea7-43e2-a929-bf6b0482e74f
+            title: HEALTH MONITOR
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_ids:
+              - health_monitor_daq
+              - cdaq9170_39045407
+              channels:
+              - health_monitor_daq.dc_panel_daq/port0/line0
+              - health_monitor_daq.dc_panel_daq/port0/line1
+              - health_monitor_daq.dc_panel_daq/port0/line2
+              - health_monitor_daq.dc_panel_daq/port0/line3
+              - cdaq9170_39045407.relay_control/port0/line4
+              - cdaq9170_39045407.relay_control/port0/line5
+              colors: []
+              legend_placement: bottom_left
+              y_label: health_monitor_daq.dc_panel_daq/port0/line0
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+  - title: COUNTER TEST
+    allow_popout: true
+    tile: null
+left_panel: null
+right_panel: null
+bottom_panel: null
+scene: {}
+poster: null
+prompt_windows: []
+mcap_path: null
+conditionals: []

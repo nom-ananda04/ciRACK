@@ -1,0 +1,580 @@
+{
+  "modules": [
+    {
+      "product_type": "NI 9263",
+      "channels": {
+        "ao0": {
+          "alias": "cDAQ1Mod1/ao0",
+          "channel_type": {
+            "AnalogOutput": {
+              "value": {
+                "constant": 5.0
+              },
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": {
+            "min": -10.0,
+            "max": 10.0
+          },
+          "enabled": true,
+          "scale": null
+        },
+        "ao3": {
+          "alias": "cDAQ1Mod1/ao3",
+          "channel_type": {
+            "AnalogOutput": {
+              "value": null,
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ao1": {
+          "alias": "cDAQ1Mod1/ao1",
+          "channel_type": {
+            "AnalogOutput": {
+              "value": null,
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ao2": {
+          "alias": "cDAQ1Mod1/ao2",
+          "channel_type": {
+            "AnalogOutput": {
+              "value": null,
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        }
+      }
+    },
+    {
+      "product_type": "NI 9204",
+      "channels": {
+        "ai0": {
+          "alias": "cDAQ1Mod2/ai0",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai11": {
+          "alias": "cDAQ1Mod2/ai11",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai9": {
+          "alias": "cDAQ1Mod2/ai9",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai7": {
+          "alias": "cDAQ1Mod2/ai7",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai2": {
+          "alias": "cDAQ1Mod2/ai2",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai13": {
+          "alias": "cDAQ1Mod2/ai13",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai14": {
+          "alias": "cDAQ1Mod2/ai14",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai10": {
+          "alias": "cDAQ1Mod2/ai10",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai15": {
+          "alias": "cDAQ1Mod2/ai15",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai4": {
+          "alias": "cDAQ1Mod2/ai4",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai12": {
+          "alias": "cDAQ1Mod2/ai12",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai5": {
+          "alias": "cDAQ1Mod2/ai5",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai1": {
+          "alias": "cDAQ1Mod2/ai1",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai8": {
+          "alias": "cDAQ1Mod2/ai8",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai6": {
+          "alias": "cDAQ1Mod2/ai6",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai3": {
+          "alias": "cDAQ1Mod2/ai3",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        }
+      }
+    },
+    {
+      "product_type": "NI 9207",
+      "channels": {
+        "ai8": {
+          "alias": "cDAQ1Mod3/ai8",
+          "channel_type": {
+            "AnalogInput": {
+              "current": {
+                "terminal_config": "rse",
+                "shunt_resistor_location": "default"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai15": {
+          "alias": "cDAQ1Mod3/ai15",
+          "channel_type": {
+            "AnalogInput": {
+              "current": {
+                "terminal_config": "rse",
+                "shunt_resistor_location": "default"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai9": {
+          "alias": "cDAQ1Mod3/ai9",
+          "channel_type": {
+            "AnalogInput": {
+              "current": {
+                "terminal_config": "rse",
+                "shunt_resistor_location": "default"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai14": {
+          "alias": "cDAQ1Mod3/ai14",
+          "channel_type": {
+            "AnalogInput": {
+              "current": {
+                "terminal_config": "rse",
+                "shunt_resistor_location": "default"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai4": {
+          "alias": "cDAQ1Mod3/ai4",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "diff"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai1": {
+          "alias": "cDAQ1Mod3/ai1",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "diff"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai10": {
+          "alias": "cDAQ1Mod3/ai10",
+          "channel_type": {
+            "AnalogInput": {
+              "current": {
+                "terminal_config": "rse",
+                "shunt_resistor_location": "default"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai13": {
+          "alias": "cDAQ1Mod3/ai13",
+          "channel_type": {
+            "AnalogInput": {
+              "current": {
+                "terminal_config": "rse",
+                "shunt_resistor_location": "default"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai6": {
+          "alias": "cDAQ1Mod3/ai6",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "diff"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai5": {
+          "alias": "cDAQ1Mod3/ai5",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "diff"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai12": {
+          "alias": "cDAQ1Mod3/ai12",
+          "channel_type": {
+            "AnalogInput": {
+              "current": {
+                "terminal_config": "rse",
+                "shunt_resistor_location": "default"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai11": {
+          "alias": "cDAQ1Mod3/ai11",
+          "channel_type": {
+            "AnalogInput": {
+              "current": {
+                "terminal_config": "rse",
+                "shunt_resistor_location": "default"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai2": {
+          "alias": "cDAQ1Mod3/ai2",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "diff"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai7": {
+          "alias": "cDAQ1Mod3/ai7",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "diff"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai0": {
+          "alias": "cDAQ1Mod3/ai0",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "diff"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai3": {
+          "alias": "cDAQ1Mod3/ai3",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "diff"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        }
+      }
+    },
+    {
+      "product_type": "NI 9401",
+      "channels": {
+        "port0/line0": {
+          "alias": "cDAQ1Mod4/port0/line0",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line2": {
+          "alias": "cDAQ1Mod4/port0/line2",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line3": {
+          "alias": "cDAQ1Mod4/port0/line3",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line4": {
+          "alias": "cDAQ1Mod4/port0/line4",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line1": {
+          "alias": "cDAQ1Mod4/port0/line1",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line5": {
+          "alias": "cDAQ1Mod4/port0/line5",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line7": {
+          "alias": "cDAQ1Mod4/port0/line7",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line6": {
+          "alias": "cDAQ1Mod4/port0/line6",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        }
+      }
+    }
+  ],
+  "stream_id": "cdaq9174_29480738",
+  "sample_rate_hz": 100.0,
+  "device_name": "cdaq9174_29480738"
+}

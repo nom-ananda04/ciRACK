@@ -1,0 +1,116 @@
+{
+  "modules": [
+    {
+      "product_type": "NI 9472",
+      "channels": {
+        "port0/line3": {
+          "alias": "relay_control/port0/line3",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line6": {
+          "alias": "relay_control/port0/line6",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line4": {
+          "alias": "relay_control/port0/line4",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line2": {
+          "alias": "relay_control/port0/line2",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line7": {
+          "alias": "relay_control/port0/line7",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line0": {
+          "alias": "relay_control/port0/line0",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line5": {
+          "alias": "relay_control/port0/line5",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line1": {
+          "alias": "relay_control/port0/line1",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        }
+      }
+    }
+  ],
+  "stream_id": "cdaq9170_39045407",
+  "sample_rate_hz": 100.0,
+  "device_name": "cdaq9170_39045407"
+}

@@ -1,0 +1,257 @@
+{
+  "stream_id": "t4_440020473",
+  "ports": {
+    "FIO7": {
+      "enabled": false,
+      "alias": "FIO7",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 3.3,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "AIN1": {
+      "enabled": true,
+      "alias": "AIN1",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 10.0,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "EIO6": {
+      "enabled": false,
+      "alias": "EIO6",
+      "kind": {
+        "DigitalInput": {
+          "pull_up_resistor_state": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "FIO6": {
+      "enabled": false,
+      "alias": "FIO6",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 3.3,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "AIN3": {
+      "enabled": true,
+      "alias": "AIN3",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 10.0,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "AIN0": {
+      "enabled": true,
+      "alias": "AIN0",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 10.0,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "FIO5": {
+      "enabled": false,
+      "alias": "FIO5",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 3.3,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "FIO4": {
+      "enabled": false,
+      "alias": "FIO4",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 3.3,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "DAC1": {
+      "enabled": true,
+      "alias": "DAC1",
+      "kind": {
+        "AnalogOutput": {
+          "output_type": {
+            "constant": 0.0
+          },
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "CIO1": {
+      "enabled": true,
+      "alias": "CIO1",
+      "kind": {
+        "DigitalInput": {
+          "pull_up_resistor_state": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "CIO2": {
+      "enabled": true,
+      "alias": "CIO2",
+      "kind": {
+        "DigitalInput": {
+          "pull_up_resistor_state": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "EIO7": {
+      "enabled": false,
+      "alias": "EIO7",
+      "kind": {
+        "DigitalInput": {
+          "pull_up_resistor_state": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "EIO0": {
+      "enabled": false,
+      "alias": "EIO0",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 2.5,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "EIO2": {
+      "enabled": false,
+      "alias": "EIO2",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 2.5,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "DAC0": {
+      "enabled": true,
+      "alias": "DAC0",
+      "kind": {
+        "AnalogOutput": {
+          "output_type": {
+            "constant": 1.0
+          },
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "CIO0": {
+      "enabled": true,
+      "alias": "CIO0",
+      "kind": {
+        "DigitalInput": {
+          "pull_up_resistor_state": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "EIO1": {
+      "enabled": false,
+      "alias": "EIO1",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 2.5,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "EIO5": {
+      "enabled": false,
+      "alias": "EIO5",
+      "kind": {
+        "DigitalInput": {
+          "pull_up_resistor_state": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "EIO3": {
+      "enabled": false,
+      "alias": "EIO3",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 2.5,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "CIO3": {
+      "enabled": true,
+      "alias": "CIO3",
+      "kind": {
+        "DigitalInput": {
+          "pull_up_resistor_state": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "EIO4": {
+      "enabled": false,
+      "alias": "EIO4",
+      "kind": {
+        "DigitalInput": {
+          "pull_up_resistor_state": null
+        }
+      },
+      "differential_channel": "GND"
+    },
+    "AIN2": {
+      "enabled": true,
+      "alias": "AIN2",
+      "kind": {
+        "AnalogInput": {
+          "unit": "",
+          "gain": 10.0,
+          "scale": null
+        }
+      },
+      "differential_channel": "GND"
+    }
+  },
+  "scan_rate": 60.0,
+  "device_name": "t4_440020473"
+}

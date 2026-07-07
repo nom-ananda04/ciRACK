@@ -1,0 +1,271 @@
+{
+  "modules": [
+    {
+      "product_type": "USB-6002",
+      "channels": {
+        "ai1": {
+          "alias": "dc_panel_daq/ai1",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line0": {
+          "alias": "dc_panel_daq/port0/line0",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line3": {
+          "alias": "dc_panel_daq/port0/line3",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line5": {
+          "alias": "dc_panel_daq/port0/line5",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line6": {
+          "alias": "dc_panel_daq/port0/line6",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line2": {
+          "alias": "dc_panel_daq/port0/line2",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai3": {
+          "alias": "dc_panel_daq/ai3",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ao0": {
+          "alias": "dc_panel_daq/ao0",
+          "channel_type": {
+            "AnalogOutput": {
+              "value": null,
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port1/line3": {
+          "alias": "dc_panel_daq/port1/line3",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ao1": {
+          "alias": "dc_panel_daq/ao1",
+          "channel_type": {
+            "AnalogOutput": {
+              "value": null,
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai4": {
+          "alias": "dc_panel_daq/ai4",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai2": {
+          "alias": "dc_panel_daq/ai2",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port1/line1": {
+          "alias": "dc_panel_daq/port1/line1",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai5": {
+          "alias": "dc_panel_daq/ai5",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai7": {
+          "alias": "dc_panel_daq/ai7",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai0": {
+          "alias": "dc_panel_daq/ai0",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port1/line0": {
+          "alias": "dc_panel_daq/port1/line0",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line4": {
+          "alias": "dc_panel_daq/port0/line4",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port1/line2": {
+          "alias": "dc_panel_daq/port1/line2",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line7": {
+          "alias": "dc_panel_daq/port0/line7",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port2/line0": {
+          "alias": "dc_panel_daq/port2/line0",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai6": {
+          "alias": "dc_panel_daq/ai6",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line1": {
+          "alias": "dc_panel_daq/port0/line1",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        }
+      }
+    }
+  ],
+  "stream_id": "health_monitor_daq",
+  "sample_rate_hz": 100.0,
+  "device_name": "health_monitor_daq"
+}

@@ -1,0 +1,377 @@
+{
+  "modules": [
+    {
+      "product_type": "USB-6421",
+      "channels": {
+        "ai11": {
+          "alias": "Dev1/ai11",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line3": {
+          "alias": "Dev1/port0/line3",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai6": {
+          "alias": "Dev1/ai6",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai8": {
+          "alias": "Dev1/ai8",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai12": {
+          "alias": "Dev1/ai12",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai13": {
+          "alias": "Dev1/ai13",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line10": {
+          "alias": "Dev1/port0/line10",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai1": {
+          "alias": "Dev1/ai1",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line4": {
+          "alias": "Dev1/port0/line4",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai14": {
+          "alias": "Dev1/ai14",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai9": {
+          "alias": "Dev1/ai9",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line12": {
+          "alias": "Dev1/port0/line12",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line13": {
+          "alias": "Dev1/port0/line13",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line7": {
+          "alias": "Dev1/port0/line7",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai10": {
+          "alias": "Dev1/ai10",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line5": {
+          "alias": "Dev1/port0/line5",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line8": {
+          "alias": "Dev1/port0/line8",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line6": {
+          "alias": "Dev1/port0/line6",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ao1": {
+          "alias": "Dev1/ao1",
+          "channel_type": {
+            "AnalogOutput": {
+              "value": null,
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai7": {
+          "alias": "Dev1/ai7",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line11": {
+          "alias": "Dev1/port0/line11",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line0": {
+          "alias": "Dev1/port0/line0",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line15": {
+          "alias": "Dev1/port0/line15",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai3": {
+          "alias": "Dev1/ai3",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line1": {
+          "alias": "Dev1/port0/line1",
+          "channel_type": {
+            "DigitalOutput": {
+              "value": {
+                "binary": 0
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai5": {
+          "alias": "Dev1/ai5",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai2": {
+          "alias": "Dev1/ai2",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai0": {
+          "alias": "Dev1/ai0",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line14": {
+          "alias": "Dev1/port0/line14",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "port0/line9": {
+          "alias": "Dev1/port0/line9",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ai4": {
+          "alias": "Dev1/ai4",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        },
+        "ai15": {
+          "alias": "Dev1/ai15",
+          "channel_type": {
+            "AnalogInput": {
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": null,
+          "enabled": false,
+          "scale": null
+        },
+        "ao0": {
+          "alias": "Dev1/ao0",
+          "channel_type": {
+            "AnalogOutput": {
+              "value": {
+                "constant": 4.0
+              },
+              "voltage": {
+                "terminal_config": "rse"
+              }
+            }
+          },
+          "input_range": {
+            "min": -10.0,
+            "max": 10.0
+          },
+          "enabled": true,
+          "scale": null
+        },
+        "port0/line2": {
+          "alias": "Dev1/port0/line2",
+          "channel_type": "DigitalInput",
+          "input_range": null,
+          "enabled": true,
+          "scale": null
+        }
+      }
+    }
+  ],
+  "stream_id": "usb6421_41477387",
+  "sample_rate_hz": 100.0,
+  "device_name": "usb6421_41477387"
+}
