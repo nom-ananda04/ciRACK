@@ -1,0 +1,29 @@
+name: "SCPI config"
+queries:
+  - uses: ./scpi-queries
+  - uses: security-and-quality
+# Optional: bundle reusable query selections.
+paths:
+  -packages
+
+# Restrict / exclude what gets scanned.
+paths:
+  - packages/instro-contrib/
+  - packages/instro-daq-labjack/instro/daq/drivers/labjack
+  - packages/instro-daq-mcc/instro/daq/drivers/mcc
+  - packages/instro-daq-ni/instro/daq/drivers/ni
+  - packages/instro-ethernetip-rs/src
+  - packages/instro-ethernetip-rs/tests
+  - packages/instro-ethernetip/instro/unstable
+  - packages/instro-ethernetip/instro/src
+  - packages/instro-i2c-aardvark/instro/i2c/drivers/totalphase
+  - packages/instro-unstable/instro/unstable/ethernetip
+  - packages/instro-unstable/instro/unstable/scope/drivers/keysight
+  - packages/instro-unstable/instro/unstable/scope/drivers/siglent
+  - packages/instro-unstable/instro/unstable/scope/drivers/tektronix
+  - packages/instro-unstable/instro/unstable/scope/examples
+  - packages/instro-unstable/instro/unstable/scope
+  - packages/instro-unstable/instro/unstable/examples
+
+
+

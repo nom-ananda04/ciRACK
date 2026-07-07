@@ -1,0 +1,47 @@
+name: "CodeQL"
+
+on:
+  push:
+    branches: [main, releases/v*]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  analyze:
+    name: Analyze Python
+    if: github.triggering_actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        id: init
+        with:
+          languages: python
+          build-mode: none
+          config-file: ./.github/codeql/config.yml
+
+      # Confirm steps.init.outputs.codeql-path points to the codeql binary.
+      - name: Print CodeQL Version
+        run: '"$CODEQL" version --format=json'
+        env:
+          CODEQL: ${{ steps.init.outputs.codeql-path }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
