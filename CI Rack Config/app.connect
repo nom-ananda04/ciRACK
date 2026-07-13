@@ -67,6 +67,8 @@ streaming:
   - channel: daq_tray.route_dac5_port21
   - channel: daq_tray.route_dac5_port22
   - channel: daq_tray.route_dac5_port23
+  - channel: dio_tray.cnt_count
+  - channel: dio_tray.cnt_in
   - channel: dio_tray.di_2
   - channel: dio_tray.di_3
   - channel: dio_tray.di_4
@@ -205,7 +207,7 @@ tiles:
     tile:
       layout: grid
       rows:
-      - height: 0.6592272
+      - height: 0.52865565
         columns:
         - width: null
           tile:
@@ -232,7 +234,7 @@ tiles:
               x_scale: linear
               y_scale: linear
               time_window: 30s
-      - height: 0.6146417
+      - height: 0.5396499
         columns:
         - width: 0.6173412
           tile:
@@ -287,7 +289,7 @@ tiles:
               x_scale: linear
               y_scale: linear
               time_window: 30s
-      - height: 0.7261302
+      - height: 0.93169385
         columns:
         - width: null
           tile:
@@ -297,10 +299,25 @@ tiles:
             direction: vertical
             should_fill: true
             elements:
+            - input: checkbox
+              id: route_daq1
+              label: Route DAQ1.AO0 (1H) -> TB_AO_MUX
+            - input: checkbox
+              id: route_daq2
+              label: Route DAQ2.AO0 (2H) -> TB_AO_MUX
+            - input: checkbox
+              id: route_daq3
+              label: Route DAQ3.AO0 (3H) -> TB_AO_MUX
+            - input: checkbox
+              id: route_daq4
+              label: Route DAQ4.AO0 (4H) -> TB_AO_MUX
+            - input: checkbox
+              id: route_cdaq
+              label: Route cDAQ1.1.AO0 (5H) -> TB_AO_MUX
             - controls: script_table
               scripts:
               - label: DAQ Control
-                path: C:\Users\Nominal User\Downloads\btop_daq_control.py
+                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\btop_daq_control.py
                 args: []
                 max_log_lines: 10000
                 id: null
@@ -455,7 +472,7 @@ tiles:
             - controls: script_table
               scripts:
               - label: FGEN test
-                path: C:\Users\Nominal User\Downloads\btop_fgen_diff_control.py
+                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\btop_fgen_diff_control.py
                 args: []
                 max_log_lines: 10000
                 id: null
@@ -579,7 +596,7 @@ tiles:
             - controls: script_table
               scripts:
               - label: DIFF test
-                path: C:\Users\Nominal User\Downloads\btop_fgen_diff_control.py
+                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\btop_fgen_diff_control.py
                 args: []
                 max_log_lines: 10000
                 id: null
@@ -801,12 +818,12 @@ tiles:
             - controls: script_table
               scripts:
               - label: Digital Input Test (DI2-DI6)
-                path: C:\Users\Nominal User\Downloads\di_raster_scan.py
+                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\di_raster_scan.py
                 args: []
                 max_log_lines: 10000
                 id: null
               - label: Digital Output Test (DO0)
-                path: C:\Users\Nominal User\Downloads\do_send_output.py
+                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\do_send_output.py
                 args: []
                 max_log_lines: 10000
                 id: null
@@ -872,7 +889,73 @@ tiles:
               x_scale: linear
               y_scale: linear
               time_window: 30s
-  - title: COUNTER TEST
+  - title: COUNTER TEST - SWITCH
+    allow_popout: true
+    tile:
+      layout: grid
+      rows:
+      - height: 0.27706665
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: a7731b63-eabb-4063-be93-8a05d81d02c3
+            title: Logs
+            direction: vertical
+            should_fill: true
+            elements:
+            - display: logs
+              script_id: 34980a_counter
+      - height: 0.2484046
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 2b8abe19-0b63-4fa3-b071-3426fdc21d50
+            title: Line Plot
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_ids:
+              - t4_440020473
+              - t7_470041016
+              - t8_480011030
+              - cdaq9174_29480738
+              - usb6421_41477387
+              channels:
+              - t4_440020473.CIO3
+              - t7_470041016.CIO3
+              - t8_480011030.CIO3
+              - cdaq9174_29480738.cDAQ1Mod4/port0/line5
+              - usb6421_41477387.Dev1/port0/line3
+              colors: []
+              legend_placement: bottom_left
+              y_label: t4_440020473.CIO3
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: 0.2245288
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: bba67447-b9fe-406e-a31f-2d0b575c1e83
+            title: Script Controls
+            direction: vertical
+            should_fill: true
+            elements:
+            - controls: script_table
+              scripts:
+              - label: null
+                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\34980a_counter.py
+                args: []
+                max_log_lines: 10000
+                id: 34980a_counter
+              show_output_column: true
+  - title: COUNTER TEST - LABJACK
     allow_popout: true
     tile: null
 left_panel: null
