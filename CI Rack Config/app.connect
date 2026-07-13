@@ -67,6 +67,7 @@ streaming:
   - channel: daq_tray.route_dac5_port21
   - channel: daq_tray.route_dac5_port22
   - channel: daq_tray.route_dac5_port23
+  - channel: dio_tray.clk_state
   - channel: dio_tray.cnt_count
   - channel: dio_tray.cnt_in
   - channel: dio_tray.di_2
@@ -957,7 +958,58 @@ tiles:
               show_output_column: true
   - title: COUNTER TEST - LABJACK
     allow_popout: true
-    tile: null
+    tile:
+      layout: grid
+      rows:
+      - height: 0.7133669
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 08e1555f-de0a-4334-910f-77a9427487ce
+            title: Logs
+            direction: vertical
+            should_fill: true
+            elements:
+            - display: logs
+              script_id: daq_counter
+      - height: 0.5159173
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: bb67b011-9c10-4c9d-96a7-e0f91feb2574
+            title: Line Plot
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: daq_counter
+              colors: []
+              legend_placement: bottom_left
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: 0.7707159
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 2135a517-1775-43f0-85a8-82529ffd6078
+            title: Script Controls
+            direction: vertical
+            should_fill: true
+            elements:
+            - controls: script_table
+              scripts:
+              - label: null
+                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\DAQ_counter.py
+                args: []
+                max_log_lines: 10000
+                id: daq_counter
+              show_output_column: true
 left_panel: null
 right_panel: null
 bottom_panel: null
