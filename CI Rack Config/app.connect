@@ -948,9 +948,6 @@ tiles:
             direction: vertical
             should_fill: true
             elements:
-            - input: checkbox
-              id: ttl_5v_enable
-              label: 'TTL level: 5V (unchecked = 3.3V, LabJack-safe -- LabJack counting is blocked while this is checked)'
             - controls: script_table
               scripts:
               - label: null

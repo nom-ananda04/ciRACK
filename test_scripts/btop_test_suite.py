@@ -451,36 +451,14 @@ class Counter34980aControl():
     MODULE_SLOT = 8
     COUNTER_CHANNEL = f"{MODULE_SLOT}301"  # counter 1; use f"{MODULE_SLOT}302" for counter 2
 
-    # Selectable input-threshold logic levels, keyed by the logic family driving
-    # the counter channel. Per the 34950A datasheet, the counter/totalizer
-    # input threshold is programmable 0-3V (Vin range 0-5V) and standard TTL
-    # logic guarantees LOW < 0.8V and HIGH > 2.0V -- 0.8V is the manufacturer-
-    # typical threshold setting, giving maximum noise margin against the LOW
-    # state while still catching the rising edge well before it needs to reach
-    # 2.0V. LVTTL (3.3V) outputs are designed to meet the same 0.8V/2.0V TTL
-    # thresholds for backward compatibility, so 0.8V is correct for both
-    # families here -- there's no need for a different value between them.
-    LOGIC_LEVELS = {"3.3V": 0.8, "5V": 0.8}
-    DEFAULT_LOGIC_LEVEL = "5V"   # cDAQ 9401 drives 5V TTL
-
-    THRESHOLD_V = LOGIC_LEVELS[DEFAULT_LOGIC_LEVEL]   # input threshold, in volts
+    # Fixed input threshold, in volts. Per the 34950A datasheet, the counter/
+    # totalizer input threshold is programmable 0-3V (Vin range 0-5V) and
+    # standard TTL logic guarantees LOW < 0.8V and HIGH > 2.0V, so 0.8V gives
+    # good noise margin and works for both TTL (5V) and LVTTL (3.3V) sources.
+    THRESHOLD_V = 0.8
     POLL_S = 0.5
 
-    CB_TTL_5V = "ttl_5v_enable"   # checked = 5V logic, unchecked = 3.3V (default)
-
     log = connect_python.get_logger(__name__)
-
-    def set_logic_level(self, inst, level):
-        """Switch the counter's input threshold to match a 3.3V or 5V logic
-        source. Can be called before configure() or at any point afterward to
-        re-arm the threshold on the fly (COUN:THR:VOLT takes effect immediately,
-        no need to re-run the full configure() sequence)."""
-        if level not in self.LOGIC_LEVELS:
-            raise ValueError(f"logic level {level!r} not in {list(self.LOGIC_LEVELS)}")
-        self.THRESHOLD_V = self.LOGIC_LEVELS[level]
-        inst.write(f"COUN:THR:VOLT {self.THRESHOLD_V},(@{self.COUNTER_CHANNEL})")
-        self.check_err(inst, f"after COUN:THR:VOLT ({level})")
-        self.log.info(f"Logic level set to {level} (threshold {self.THRESHOLD_V}V)")
 
     def check_err(self, inst, context=""):
         err = inst.query("SYST:ERR?").strip()
@@ -571,15 +549,12 @@ class MultiCounterControl():
     CLK_SLOT = 8
     CLK_FREQ_HZ = 1000   # clock output frequency
 
-    # Selectable output logic level. LabJacks (T4/T7/T8) are NOT 5V tolerant on
-    # their digital inputs -- default stays at 3.3V (LabJack-safe); switching to
-    # 5V is for cDAQ/USB-6421-only sessions and bars LabJack counting outright
-    # (see count_labjack()).
-    LOGIC_LEVELS = {"3.3V": 3.3, "5V": 5.0}
-    CLK_LEVEL_V = LOGIC_LEVELS["3.3V"]    # logic "1" output voltage level
+    # Fixed output logic level. LabJacks (T4/T7/T8) are NOT 5V tolerant on
+    # their digital inputs, so this stays at the LabJack-safe 3.3V for all
+    # sources (including cDAQ/USB-6421, which read 3.3V TTL fine).
+    CLK_LEVEL_V = 3.3    # logic "1" output voltage level
 
     CB_CLK = "clk_enable"
-    CB_TTL_5V = "ttl_5v_enable"   # checked = 5V logic, unchecked = 3.3V (default)
 
     # --- Checkbox app-value IDs (must match the ids in app.connect) -------------
     CB_T4 = "count_t4"
@@ -642,22 +617,6 @@ class MultiCounterControl():
         except Exception:
             pass
 
-    def set_clk_logic_level(self, inst, level):
-        """Switch the shared CLK output between 3.3V and 5V logic.
-
-        Updates self.CLK_LEVEL_V and, if the CLK is currently running, re-issues
-        SOUR:MOD:CLOC:LEV immediately so the change takes effect live. LabJacks
-        are not 5V tolerant on their digital inputs -- count_labjack() checks
-        this level and refuses to run (with a logged error) whenever it's "5V".
-        """
-        if level not in self.LOGIC_LEVELS:
-            raise ValueError(f"logic level {level!r} not in {list(self.LOGIC_LEVELS)}")
-        self.CLK_LEVEL_V = self.LOGIC_LEVELS[level]
-        if self._clk_state["on"]:
-            inst.write(f"SOUR:MOD:CLOC:LEV {self.CLK_LEVEL_V},{self.CLK_SLOT}")
-            self.check_err_visa(inst, f"after CLK LEV ({level})")
-        self.log.info(f"CLK logic level set to {level} ({self.CLK_LEVEL_V}V)")
-
     def check_err_visa(self, inst, context=""):
         err = inst.query("SYST:ERR?").strip()
         self.log.info(f"SYST:ERR? {context} -> {err}")
@@ -679,18 +638,6 @@ class MultiCounterControl():
     def count_labjack(self, client, cb_id):
         from labjack import ljm
 
-        # LabJack digital inputs are not 5V tolerant -- refuse outright rather
-        # than ever driving 5V CLK into CIO2. Checked before opening the device
-        # at all, so a misconfigured 5V session never touches the LabJack.
-        if self.CLK_LEVEL_V >= self.LOGIC_LEVELS["5V"]:
-            self.log.error(
-                f"Refusing to count on LabJack {cb_id}: shared CLK is set to "
-                f"{self.CLK_LEVEL_V}V logic. LabJack DIO inputs are not 5V "
-                f"tolerant -- uncheck the 5V TTL box (or leave it unchecked) "
-                f"before selecting a LabJack."
-            )
-            return
-
         dev_type, serial = self.LABJACKS[cb_id]
         handle = ljm.openS(dev_type, "ANY", serial)
         try:
@@ -707,13 +654,6 @@ class MultiCounterControl():
             while True:
                 if self.selected_checkbox(client) != cb_id:
                     self.log.info("Selection changed; stopping LabJack counter.")
-                    return
-                if self.CLK_LEVEL_V >= self.LOGIC_LEVELS["5V"]:
-                    self.log.error(
-                        f"TTL level switched to {self.CLK_LEVEL_V}V logic while "
-                        f"a LabJack was active -- stopping LabJack counter "
-                        f"immediately to avoid over-voltage on CIO2."
-                    )
                     return
                 count = int(ljm.eReadName(handle, f"DIO{self.LJ_DIO}_EF_READ_A"))
                 if count != last:

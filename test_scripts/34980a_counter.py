@@ -40,19 +40,8 @@ def main(client: connect_python.Client):
         counter.configure(inst)
         counter.log.info(f"Ready. Reading totalizer on channel {counter.COUNTER_CHANNEL}.")
 
-        # Follow the TTL level checkbox (checked = 5V, unchecked = 3.3V, the
-        # default). ttl_level starts as None so the first loop iteration always
-        # applies whatever the checkbox currently reads, instead of silently
-        # trusting a hardcoded default.
-        ttl_level = None
         last_count = None
         while True:
-            want_5v = bool(client.get_value(counter.CB_TTL_5V))
-            new_level = "5V" if want_5v else "3.3V"
-            if new_level != ttl_level:
-                counter.set_logic_level(inst, new_level)
-                ttl_level = new_level
-
             count = counter.read_count(inst)
             if count is None:
                 time.sleep(counter.POLL_S)
