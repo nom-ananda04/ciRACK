@@ -452,10 +452,15 @@ class Counter34980aControl():
     COUNTER_CHANNEL = f"{MODULE_SLOT}301"  # counter 1; use f"{MODULE_SLOT}302" for counter 2
 
     # Selectable input-threshold logic levels, keyed by the logic family driving
-    # the counter channel. A threshold near 50% of Vcc gives the cleanest edge
-    # detection for that family (a fixed 1.5V works "well enough" for both, but
-    # isn't centered for either one).
-    LOGIC_LEVELS = {"3.3V": 1.65, "5V": 2.5}
+    # the counter channel. Per the 34950A datasheet, the counter/totalizer
+    # input threshold is programmable 0-3V (Vin range 0-5V) and standard TTL
+    # logic guarantees LOW < 0.8V and HIGH > 2.0V -- 0.8V is the manufacturer-
+    # typical threshold setting, giving maximum noise margin against the LOW
+    # state while still catching the rising edge well before it needs to reach
+    # 2.0V. LVTTL (3.3V) outputs are designed to meet the same 0.8V/2.0V TTL
+    # thresholds for backward compatibility, so 0.8V is correct for both
+    # families here -- there's no need for a different value between them.
+    LOGIC_LEVELS = {"3.3V": 0.8, "5V": 0.8}
     DEFAULT_LOGIC_LEVEL = "5V"   # cDAQ 9401 drives 5V TTL
 
     THRESHOLD_V = LOGIC_LEVELS[DEFAULT_LOGIC_LEVEL]   # input threshold, in volts
@@ -536,7 +541,12 @@ class Counter34980aControl():
         self.check_err(inst, "after COUN:INIT")
 
         if not ok_func:
-            self.log.info("WARNING: COUN:FUNC TOT was rejected -- check module type / channel above")
+            raise RuntimeError(
+                f"COUN:FUNC TOT was rejected on channel {self.COUNTER_CHANNEL} -- the module in "
+                f"slot {self.MODULE_SLOT} likely doesn't support counting on this channel (wrong "
+                f"module type, or the wrong channel number for a 34950A). The totalizer will read "
+                f"0 forever until this succeeds -- check SYST:CTYP? above before re-running."
+            )
 
     def read_count(self, inst):
         """Read the totalizer once. Returns an int count, or None if the response was unparseable."""
@@ -620,12 +630,15 @@ class MultiCounterControl():
         self.check_err_visa(inst, "after CLK FREQ")
         inst.write(f"SOUR:MOD:CLOC:LEV {self.CLK_LEVEL_V},{self.CLK_SLOT}")
         self.check_err_visa(inst, "after CLK LEV")
-        inst.write(f"SOUR:MOD:CLOC ON,{self.CLK_SLOT}")
-        self.check_err_visa(inst, "after CLK ON")
+        # Real mnemonic is SOURce:MODule:CLOCk:STATe -- "CLOC ON" alone (no
+        # :STATe) isn't a valid command per the Keysight 34980A Programmer's
+        # Reference and was silently doing nothing.
+        inst.write(f"SOUR:MOD:CLOC:STAT ON,{self.CLK_SLOT}")
+        self.check_err_visa(inst, "after CLK STATe ON")
 
     def clk_off(self, inst):
         try:
-            inst.write(f"SOUR:MOD:CLOC OFF,{self.CLK_SLOT}")
+            inst.write(f"SOUR:MOD:CLOC:STAT OFF,{self.CLK_SLOT}")
         except Exception:
             pass
 

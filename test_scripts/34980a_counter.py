@@ -19,8 +19,19 @@ def main(client: connect_python.Client):
         raise RuntimeError(f"Connected device is not a 34980A: {idn!r}")
 
     # Confirm the module in the slot actually is a 34950A (counter-capable).
+    # This used to be logged and nothing else -- if the wrong module (or slot)
+    # is configured, COUN:FUNC TOT gets silently rejected downstream and the
+    # totalizer reads 0 forever with no obvious error, which is exactly the
+    # kind of "stuck at 0" symptom that's hard to tell apart from a wiring
+    # issue. Fail loudly here instead.
     ctype = inst.query(f"SYST:CTYP? {counter.MODULE_SLOT}").strip()
     counter.log.info(f"SYST:CTYP? {counter.MODULE_SLOT} = {ctype}")
+    if "34950" not in ctype:
+        raise RuntimeError(
+            f"Module in slot {counter.MODULE_SLOT} is not a 34950A (counter-capable): {ctype!r}. "
+            f"COUNTER_CHANNEL={counter.COUNTER_CHANNEL} will never count on the wrong module -- "
+            f"check MODULE_SLOT / physical slot wiring."
+        )
 
     # Clear any stale errors/output-queue desync from previous runs.
     inst.write("*CLS")
