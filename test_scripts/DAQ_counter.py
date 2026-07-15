@@ -20,8 +20,16 @@ def main(client: connect_python.Client):
 
     clk_running = False
     active = None
+    ttl_level = "3.3V"   # matches MultiCounterControl.CLK_LEVEL_V default (LabJack-safe)
     try:
         while True:
+            # --- TTL level: follow the 5V checkbox (default 3.3V, LabJack-safe) ---
+            want_5v = bool(client.get_value(counter.CB_TTL_5V))
+            new_level = "5V" if want_5v else "3.3V"
+            if new_level != ttl_level:
+                counter.set_clk_logic_level(inst, new_level)
+                ttl_level = new_level
+
             # --- CLK output: follow the enable checkbox ---
             want_clk = bool(client.get_value(counter.CB_CLK))
             if want_clk and not clk_running:
@@ -47,8 +55,11 @@ def main(client: connect_python.Client):
                 continue
 
             # NOTE: the counter loop below blocks until the device selection
-            # changes, so the CLK checkbox is only re-evaluated between device
-            # switches (fine for the usual "enable CLK, then count" workflow).
+            # changes, so the CLK/TTL checkboxes are only re-evaluated between
+            # device switches (fine for the usual "enable CLK, then count"
+            # workflow) -- except LabJack counting, which re-checks the TTL
+            # level every poll and bails out immediately (with a logged error)
+            # if it's flipped to 5V while active.
             active = cb_id
             try:
                 if cb_id in counter.LABJACKS:

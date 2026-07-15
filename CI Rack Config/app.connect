@@ -1002,6 +1002,27 @@ tiles:
             direction: vertical
             should_fill: true
             elements:
+            - input: checkbox
+              id: count_t4
+              label: Count on LabJack T4
+            - input: checkbox
+              id: count_t7
+              label: Count on LabJack T7
+            - input: checkbox
+              id: count_t8
+              label: Count on LabJack T8
+            - input: checkbox
+              id: count_usb6421
+              label: Count on USB-6421
+            - input: checkbox
+              id: count_cdaq
+              label: Count on cDAQ-9401
+            - input: checkbox
+              id: clk_enable
+              label: Enable 34980A CLK output
+            - input: checkbox
+              id: ttl_5v_enable
+              label: 'TTL level: 5V (unchecked = 3.3V, LabJack-safe -- LabJack counting is blocked while this is checked)'
             - controls: script_table
               scripts:
               - label: null

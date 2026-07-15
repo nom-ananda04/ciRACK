@@ -8,6 +8,11 @@ from btop_test_suite import Counter34980aControl
 def main(client: connect_python.Client):
     counter = Counter34980aControl()
 
+    # Which logic family is driving the counter's input? Switch to "3.3V" if
+    # the source is 3.3V logic (e.g. a LabJack DIO line) instead of 5V TTL
+    # (e.g. the cDAQ 9401). See Counter34980aControl.LOGIC_LEVELS.
+    LOGIC_LEVEL = "5V"
+
     rm = pyvisa.ResourceManager()
     print(rm.list_resources(), flush=True)
     inst = rm.open_resource(counter.RESOURCE)
@@ -27,6 +32,7 @@ def main(client: connect_python.Client):
 
     try:
         counter.configure(inst)
+        counter.set_logic_level(inst, LOGIC_LEVEL)
         counter.log.info(f"Ready. Reading totalizer on channel {counter.COUNTER_CHANNEL}.")
 
         last_count = None
