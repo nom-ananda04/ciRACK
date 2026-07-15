@@ -461,6 +461,8 @@ class Counter34980aControl():
     THRESHOLD_V = LOGIC_LEVELS[DEFAULT_LOGIC_LEVEL]   # input threshold, in volts
     POLL_S = 0.5
 
+    CB_TTL_5V = "ttl_5v_enable"   # checked = 5V logic, unchecked = 3.3V (default)
+
     log = connect_python.get_logger(__name__)
 
     def set_logic_level(self, inst, level):
