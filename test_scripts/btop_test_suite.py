@@ -451,11 +451,20 @@ class Counter34980aControl():
     MODULE_SLOT = 8
     COUNTER_CHANNEL = f"{MODULE_SLOT}301"  # counter 1; use f"{MODULE_SLOT}302" for counter 2
 
-    # Fixed input threshold, in volts. Per the 34950A datasheet, the counter/
-    # totalizer input threshold is programmable 0-3V (Vin range 0-5V) and
-    # standard TTL logic guarantees LOW < 0.8V and HIGH > 2.0V, so 0.8V gives
-    # good noise margin and works for both TTL (5V) and LVTTL (3.3V) sources.
-    THRESHOLD_V = 0.8
+    # Fixed input threshold, in volts. Per LabJack's own T-series datasheet
+    # (Appendix A-2), CIO/EIO output impedance is 180 ohms (a fairly weak
+    # driver) and their own worked example shows a 180 ohm load pulling the
+    # output HIGH down to ~1.65V (vs. 3.3V unloaded) -- Output High Voltage
+    # is only guaranteed down to 2.6V typical at 5mA and drops further under
+    # heavier loading. Output LOW stays low regardless (0.01-0.75V across
+    # the sinking range in that same table). NI's counter/PFI driver doesn't
+    # sag like this under the same load, which is the real reason 5V TTL
+    # (NI) clears a threshold that 3.3V CMOS (LabJack) may not -- it's a
+    # drive-strength/loading difference, not just a nominal voltage one.
+    # Dropped from 1.5V to 1.0V for more margin above LOW's worst case
+    # (0.75V) while staying safely below even a badly-drooped HIGH like the
+    # 1.65V worked example above.
+    THRESHOLD_V = 1.0
     POLL_S = 0.5
 
     log = connect_python.get_logger(__name__)
@@ -508,6 +517,24 @@ class Counter34980aControl():
         # Input threshold voltage (signal must cross this to register an edge).
         inst.write(f"COUN:THR:VOLT {self.THRESHOLD_V},(@{self.COUNTER_CHANNEL})")
         self.check_err(inst, "after COUN:THR:VOLT")
+
+        # Read the threshold straight back from the instrument rather than
+        # trusting that the write succeeded just because SYST:ERR? was clean --
+        # a clamped/rounded value would still report no error but wouldn't
+        # match what we asked for. Flag loudly if it doesn't match.
+        readback = self.safe_query(inst, f"COUN:THR:VOLT? (@{self.COUNTER_CHANNEL})")
+        try:
+            readback_v = float(readback)
+            if abs(readback_v - self.THRESHOLD_V) > 0.01:
+                self.log.error(
+                    f"Threshold readback mismatch: asked for {self.THRESHOLD_V}V, "
+                    f"instrument reports {readback_v}V on channel {self.COUNTER_CHANNEL}. "
+                    f"The card is NOT actually configured at the level we intended."
+                )
+            else:
+                self.log.info(f"Threshold readback confirmed: {readback_v}V on channel {self.COUNTER_CHANNEL}.")
+        except ValueError:
+            self.log.info(f"unexpected COUN:THR:VOLT? response: {readback!r}")
 
         # Zero the accumulated count.
         inst.write(f"COUN:TOT:CLE:IMM (@{self.COUNTER_CHANNEL})")
