@@ -1,4 +1,13 @@
 {
+    "dataset_name": "Hardware CI RACK stream",
     "drivers": "all",
-    "tests": "all"
+    "tests": "all",
+    "workbook_templates": {
+        "counter_totalize": "ri.workbook_template.main.template.PLACEHOLDER",
+        "di_raster_scan": "ri.workbook_template.main.template.PLACEHOLDER",
+        "do_drive": "ri.workbook_template.main.template.PLACEHOLDER",
+        "multi_counter_clk": "ri.workbook_template.main.template.PLACEHOLDER",
+        "fgen_sweep": "ri.workbook_template.main.template.PLACEHOLDER",
+        "ain_ao_route": "ri.workbook_template.main.template.PLACEHOLDER"
+    }
 }
