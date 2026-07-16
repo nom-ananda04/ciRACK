@@ -1,4 +1,4 @@
-import connect_python
+import logging
 import pyvisa
 import time
 from datetime import datetime
@@ -39,7 +39,7 @@ class FGEN_DIFFControl():
     CYCLE_PAUSE_S = 2.0      # pause between automatic full-sweep cycles
     STREAM_ID = "daq_tray"
 
-    log = connect_python.get_logger(__name__)
+    log = logging.getLogger(__name__)
 
     def _create_daq(self):
         daq = InstroDAQ(name="daq_tray", driver=Keysight34980A(self.RESOURCE))
@@ -175,7 +175,7 @@ class AIN_AOControl():
     VOLTAGE_TOLERANCE_V = 0.05
 
     # connect app init
-    log = connect_python.get_logger(__name__)
+    log = logging.getLogger(__name__)
     STREAM_ID = "daq_tray"
     COMMAND_TOPIC = "script/daq_tray"
     def _create_daq(self):
@@ -341,7 +341,7 @@ class diRasterScan():
 
     STREAM_ID = "dio_tray"
 
-    log = connect_python.get_logger(__name__)
+    log = logging.getLogger(__name__)
 
     def _line(self, bit: int) -> str:
         return f"{self.MODULE_SLOT}{self.DIO_BANK}/{bit}"
@@ -401,7 +401,7 @@ class doDriveControl():
 
     DRIVE_LEVEL_DEFAULT = 0
 
-    log = connect_python.get_logger(__name__)
+    log = logging.getLogger(__name__)
 
     def _line(self, bit: int) -> str:
         """Keysight physical channel string for a single DIO line, e.g. '8101/0'."""
@@ -467,7 +467,7 @@ class Counter34980aControl():
     THRESHOLD_V = 1.0
     POLL_S = 0.5
 
-    log = connect_python.get_logger(__name__)
+    log = logging.getLogger(__name__)
 
     def check_err(self, inst, context=""):
         err = inst.query("SYST:ERR?").strip()
@@ -617,7 +617,7 @@ class MultiCounterControl():
         CB_CDAQ: "/cDAQ1Mod4/PFI5",
     }
 
-    log = connect_python.get_logger(__name__)
+    log = logging.getLogger(__name__)
 
     def __init__(self):
         self._clk_state = {"on": False}
