@@ -78,6 +78,7 @@ until per-device counting gets added. That's flagged at startup rather
 than silently doing nothing.
 """
 
+from http import client
 import json
 import pathlib
 import time
@@ -426,7 +427,8 @@ def main():
     if "34980A" not in idn:
         raise RuntimeError(f"Connected device is not a 34980A: {idn!r}")
 
-    publisher = NominalCorePublisher(dataset_rid=config["dataset_rid"])
+    dataset = client.create_dataset(name="Hardware CI RACK stream")
+    publisher = NominalCorePublisher(dataset_rid=dataset.rid)
 
     def publish(channel_data: dict, tags: dict | None = None):
         ts = _now_ns()
