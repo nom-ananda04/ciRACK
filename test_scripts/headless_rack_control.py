@@ -140,9 +140,9 @@ def load_config(path: pathlib.Path) -> dict:
     with open(path) as f:
         raw = json.load(f)
 
-    dataset_rid = raw.get("dataset_rid")
-    if not dataset_rid:
-        raise ValueError(f"{path}: \"dataset_rid\" is required")
+    # dataset_rid = raw.get("dataset_rid")
+    # if not dataset_rid:
+    #     raise ValueError(f"{path}: \"dataset_rid\" is required")
 
     drivers = _resolve_all(raw.get("drivers", "all"), ALL_DRIVERS, "drivers")
     tests = _resolve_all(raw.get("tests", "all"), ALL_TESTS, "tests")
