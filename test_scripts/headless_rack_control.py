@@ -835,7 +835,20 @@ def main():
     publisher = NominalCorePublisher(dataset_rid=dataset.rid)
     # core_runs = setup_runs_and_workbooks(core_client, dataset, tests, config["workbook_templates"])
 
+    # Debug visibility: announce the first time each subsystem tag actually
+    # streams data (every publish() call in this file passes
+    # tags={"subsystem": ...}, so this catches every DAQ/test's first real
+    # write to Core), and the first time each test id actually starts
+    # running. Both print exactly once per subsystem/test id per session --
+    # not a per-pass log, just "this one is live now."
+    seen_subsystems = set()
+
     def publish(channel_data: dict, tags: dict | None = None):
+        subsystem = (tags or {}).get("subsystem")
+        if subsystem and subsystem not in seen_subsystems:
+            seen_subsystems.add(subsystem)
+            print(f"[stream] {subsystem!r} is now streaming to Core", flush=True)
+
         ts = _now_ns()
         publisher.publish(
             Measurement(
@@ -845,10 +858,18 @@ def main():
             )
         )
 
+    started_tests = set()
+
+    def _announce_test_start(test_id):
+        if test_id not in started_tests:
+            started_tests.add(test_id)
+            print(f"[test] {test_id!r} starting", flush=True)
+
     try:
         # One-shot tests run once, before the main loop starts.
         for test_id, run in ONE_SHOT_TESTS.items():
             if test_id in tests:
+                _announce_test_start(test_id)
                 run(daq, inst, publish)
 
         # Continuous tests: no round-robin/generator scheduling -- every
@@ -861,6 +882,7 @@ def main():
             while True:
                 for test_id, run in CONTINUOUS_TESTS:
                     if test_id in tests:
+                        _announce_test_start(test_id)
                         run(daq, inst, publish, state)
                 time.sleep(POLL_S)
         finally:
