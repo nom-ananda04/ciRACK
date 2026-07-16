@@ -561,7 +561,6 @@ class Counter34980aControl():
         except ValueError:
             self.log.info(f"unexpected totalizer response: {resp!r}")
             return None
-    
 
 
 class MultiCounterControl():

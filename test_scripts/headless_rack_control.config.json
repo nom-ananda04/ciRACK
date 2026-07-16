@@ -1,0 +1,5 @@
+{
+    "dataset_rid": "ri.catalog.main.dataset.PLACEHOLDER",
+    "drivers": "all",
+    "tests": "all"
+}
