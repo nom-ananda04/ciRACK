@@ -447,41 +447,41 @@ ONE_SHOT_TESTS = {
 }
 
 
-def setup_runs_and_workbooks(client, dataset, tests, workbook_templates):
-    """One Run + one Workbook per enabled test id that has a template_rid in
-    workbook_templates (see module docstring). Returns {test_id: (run,
-    workbook)} for whatever actually got created -- tests with no
-    template_rid configured are simply absent from the returned dict.
+# def setup_runs_and_workbooks(client, dataset, tests, workbook_templates):
+#     """One Run + one Workbook per enabled test id that has a template_rid in
+#     workbook_templates (see module docstring). Returns {test_id: (run,
+#     workbook)} for whatever actually got created -- tests with no
+#     template_rid configured are simply absent from the returned dict.
 
-    Each run is open-ended (end=None): it represents "this test session is
-    still live," not a fixed historical window. close_runs() below sets the
-    end timestamp on the way out.
-    """
-    session_start = datetime.now(timezone.utc)
-    created = {}
-    for test_id in tests:
-        template_rid = workbook_templates.get(test_id)
-        if not template_rid:
-            continue  # already logged by load_config()
+#     Each run is open-ended (end=None): it represents "this test session is
+#     still live," not a fixed historical window. close_runs() below sets the
+#     end timestamp on the way out.
+#     """
+#     session_start = datetime.now(timezone.utc)
+#     created = {}
+#     for test_id in tests:
+#         template_rid = workbook_templates.get(test_id)
+#         if not template_rid:
+#             continue  # already logged by load_config()
 
-        core_run = client.create_run(
-            name=f"{test_id} - {session_start.isoformat()}",
-            start=session_start,
-            end=None,
-        )
-        # ref_name=test_id: templates bind their charts to a dataset by
-        # ref_name (see Run.add_dataset's docstring), and using the test id
-        # itself as the ref_name is what lets the same template keep
-        # resolving correctly against a brand new run (and a brand new
-        # dataset) every time this script runs again.
-        core_run.add_dataset(ref_name=test_id, dataset=dataset)
+#         core_run = client.create_run(
+#             name=f"{test_id} - {session_start.isoformat()}",
+#             start=session_start,
+#             end=None,
+#         )
+#         # ref_name=test_id: templates bind their charts to a dataset by
+#         # ref_name (see Run.add_dataset's docstring), and using the test id
+#         # itself as the ref_name is what lets the same template keep
+#         # resolving correctly against a brand new run (and a brand new
+#         # dataset) every time this script runs again.
+#         core_run.add_dataset(ref_name=test_id, dataset=dataset)
 
-        template = client.get_workbook_template(template_rid)
-        workbook = template.create_workbook(run=core_run)
-        print(f"[workbook] {test_id}: run={core_run.rid} workbook={workbook.nominal_url}", flush=True)
+#         template = client.get_workbook_template(template_rid)
+#         workbook = template.create_workbook(run=core_run)
+#         print(f"[workbook] {test_id}: run={core_run.rid} workbook={workbook.nominal_url}", flush=True)
 
-        created[test_id] = (core_run, workbook)
-    return created
+#         created[test_id] = (core_run, workbook)
+#     return created
 
 
 def close_runs(core_runs):
@@ -523,7 +523,7 @@ def main():
     print(f"[dataset] created {dataset.rid} ({config['dataset_name']!r})", flush=True)
 
     publisher = NominalCorePublisher(dataset_rid=dataset.rid)
-    core_runs = setup_runs_and_workbooks(core_client, dataset, tests, config["workbook_templates"])
+    # core_runs = setup_runs_and_workbooks(core_client, dataset, tests, config["workbook_templates"])
 
     def publish(channel_data: dict, tags: dict | None = None):
         ts = _now_ns()
