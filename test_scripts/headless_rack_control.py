@@ -155,7 +155,7 @@ def load_config(path: pathlib.Path) -> dict:
               f"enabled drivers {drivers}", flush=True)
 
     return {
-        "dataset_rid": dataset_rid,
+        # "dataset_rid": dataset_rid,
         "drivers": drivers,
         "tests": enabled_tests,
     }
@@ -409,7 +409,7 @@ ONE_SHOT_TESTS = {
 def main():
     config = load_config(CONFIG_PATH)
     tests = set(config["tests"])
-    print(f"[config] dataset_rid={config['dataset_rid']!r} drivers={config['drivers']} "
+    print(f"[config] drivers={config['drivers']} "
           f"tests={sorted(tests)}", flush=True)
 
     # --- one shared InstroDAQ session for the whole process ----------------
