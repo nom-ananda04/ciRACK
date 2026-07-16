@@ -1,8 +1,20 @@
-import logging
 import pyvisa
 import time
 from datetime import datetime
 from types import SimpleNamespace
+
+# connect_python only exists inside Connect's own bundled Python venv -- it's
+# injected when Connect itself runs a script, not something pip-installable
+# or available to headless_rack_control.py (plain system Python, no Connect
+# runtime). Try it first so scripts run through Connect keep using its real
+# logger (shows up in Connect's own log viewer); fall back to the stdlib
+# logging module so the exact same classes still work headless.
+try:
+    import connect_python
+    _log = connect_python.get_logger(__name__)
+except ImportError:
+    import logging
+    _log = logging.getLogger(__name__)
 
 from instro.daq import InstroDAQ
 from instro.daq.drivers import Keysight34980A
@@ -39,7 +51,7 @@ class FGEN_DIFFControl():
     CYCLE_PAUSE_S = 2.0      # pause between automatic full-sweep cycles
     STREAM_ID = "daq_tray"
 
-    log = logging.getLogger(__name__)
+    log = _log
 
     def _create_daq(self):
         daq = InstroDAQ(name="daq_tray", driver=Keysight34980A(self.RESOURCE))
@@ -175,7 +187,7 @@ class AIN_AOControl():
     VOLTAGE_TOLERANCE_V = 0.05
 
     # connect app init
-    log = logging.getLogger(__name__)
+    log = _log
     STREAM_ID = "daq_tray"
     COMMAND_TOPIC = "script/daq_tray"
     def _create_daq(self):
@@ -341,7 +353,7 @@ class diRasterScan():
 
     STREAM_ID = "dio_tray"
 
-    log = logging.getLogger(__name__)
+    log = _log
 
     def _line(self, bit: int) -> str:
         return f"{self.MODULE_SLOT}{self.DIO_BANK}/{bit}"
@@ -401,7 +413,7 @@ class doDriveControl():
 
     DRIVE_LEVEL_DEFAULT = 0
 
-    log = logging.getLogger(__name__)
+    log = _log
 
     def _line(self, bit: int) -> str:
         """Keysight physical channel string for a single DIO line, e.g. '8101/0'."""
@@ -467,7 +479,7 @@ class Counter34980aControl():
     THRESHOLD_V = 1.0
     POLL_S = 0.5
 
-    log = logging.getLogger(__name__)
+    log = _log
 
     def check_err(self, inst, context=""):
         err = inst.query("SYST:ERR?").strip()
@@ -617,7 +629,7 @@ class MultiCounterControl():
         CB_CDAQ: "/cDAQ1Mod4/PFI5",
     }
 
-    log = logging.getLogger(__name__)
+    log = _log
 
     def __init__(self):
         self._clk_state = {"on": False}
