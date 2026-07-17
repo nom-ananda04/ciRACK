@@ -117,7 +117,16 @@ ENABLE_CLK = False                                     # MultiCounterControl CLK
 # crosspoints open". Bank-relative port on the mux per source: 1H=DAQ1.AO0,
 # 2H=DAQ2.AO0, 3H=DAQ3.AO0, 4H=DAQ4.AO0, 5H=cDAQ1.1.AO0 (1L=TB_AGND, not a
 # source).
-AIN_AO_SOURCE = None
+#
+# "route_cdaq" (port 5 = cDAQ1Mod1 = ni9263's AO0) needs to be selected, not
+# None, for ni9204_ain1/ni9207_ain1 to ever read anything: per the wiring
+# you confirmed, ni9263 only reaches ni9204/ni9207 through this shared mux
+# bus (unlike T4/T7/T8/USB-6421, which self-loop DAC1->AIN0 directly on the
+# same box and don't need this at all). With AIN_AO_SOURCE=None, the mux
+# was left fully open ("no source selected") the entire time, so those two
+# channels had no path to ni9263's signal regardless of what it was
+# driving -- confirmed as the reason they read flat on real hardware.
+AIN_AO_SOURCE = "route_cdaq"
 AIN_AO_SOURCES = {
     "route_daq1": 1,
     "route_daq2": 2,
@@ -391,31 +400,46 @@ class _StreamClient:
 
 
 # --- FGEN/DIFF sine rig ------------------------------------------------------
-# Drives a 1 Hz, 1 Vpp-amplitude, 1 V offset sine wave out DAC0/port0 on
-# T4/T7/T8/USB-6421/NI-9263, and senses on AIN1/ai1 on
-# T4/T7/T8/USB-6421/NI-9204/NI-9207 -- same device list and module mapping as
-# the AIN_AO analog rig below (cDAQ1Mod1=NI9263, cDAQ1Mod2=NI9204,
-# cDAQ1Mod3=NI9207), just driving a sine instead of a constant.
+# Drives a 1 Hz, 1 Vpp-amplitude, 1 V offset sine wave. T4/T7/T8/USB-6421
+# each self-loop directly on their own box -- DAC1->AIN0 (LabJack) /
+# ao1->ai0 (NI), confirmed wiring -- so each one drives and senses its own
+# sine independently. NI-9263 (cDAQ1Mod1) only drives (ao0); NI-9204/NI-9207
+# (cDAQ1Mod2/3) only sense (ai1), reaching NI-9263's signal through the
+# shared Keysight TB_AO_MUX bus instead of a direct wire (see
+# test_fgen_sweep's mux-routing setup below). Same device list and module
+# mapping as the AIN_AO analog rig below, just driving a sine instead of a
+# constant.
 #
 # instro has no hardware-timed/buffered analog output for either LabJack or
 # NI-DAQmx (confirmed from source) -- write_analog_value() is a single
 # immediate write. A per-pass single sample at POLL_S=0.5s would only give
 # ~2 samples/cycle at 1Hz (stair-stepped, not a real sine), so instead each
 # call to this function runs a fast inner "burst" loop -- FGEN_SINE_UPDATE_HZ
-# samples/sec for FGEN_SINE_BURST_S seconds (~40 samples/cycle) -- as a
-# single blocking call. No real threading, just a tighter loop.
+# samples/sec for FGEN_SINE_BURST_S seconds -- as a single blocking call. No
+# real threading, just a tighter loop.
+#
+# FGEN_SINE_BURST_S needs to be much longer than one period, not ~half of
+# one: main()'s outer loop always does time.sleep(POLL_S) right after this
+# function returns, regardless of how long the burst itself took -- with
+# the old 0.5s burst (exactly half the 1Hz sine's period), that extra 0.5s
+# gap landed in the SAME phase every single cycle, so half of every period
+# was simply never sampled. Confirmed on real hardware: that rendered as a
+# jagged, blocky waveform, not a sine. Making the burst span many full
+# periods (below) turns that same fixed 0.5s gap into a small, infrequent
+# blip -- e.g. at 20s, one ~0.5s gap every 20 cycles -- instead of erasing
+# half of every cycle.
 FGEN_SINE_FREQ_HZ = 1.0
 FGEN_SINE_AMPLITUDE_V = 1.0
 FGEN_SINE_OFFSET_V = 1.0
 FGEN_SINE_UPDATE_HZ = 40.0
-FGEN_SINE_BURST_S = 0.5
+FGEN_SINE_BURST_S = 20.0
 
 # (device_key, driver_family, device_id, out_channel_or_None, sense_channel_or_None)
 FGEN_ANALOG_DEVICES = [
-    ("t4", "labjack", "440020473", "DAC0", "AIN1"),
-    ("t7", "labjack", "470041016", "DAC0", "AIN1"),
-    ("t8", "labjack", "480011030", "DAC0", "AIN1"),
-    ("usb6421", "ni", "Dev1", "Dev1/ao0", "Dev1/ai1"),
+    ("t4", "labjack", "440020473", "DAC1", "AIN0"),
+    ("t7", "labjack", "470041016", "DAC1", "AIN0"),
+    ("t8", "labjack", "480011030", "DAC1", "AIN0"),
+    ("usb6421", "ni", "Dev1", "Dev1/ao1", "Dev1/ai0"),
     ("ni9263", "ni", "cDAQ1Mod1", "cDAQ1Mod1/ao0", None),
     ("ni9204", "ni", "cDAQ1Mod2", None, "cDAQ1Mod2/ai1"),
     ("ni9207", "ni", "cDAQ1Mod3", None, "cDAQ1Mod3/ai1"),
@@ -469,6 +493,23 @@ def test_fgen_sweep(daq, publish, state):
         state["fgen_analog_daqs"] = fgen_analog_daqs
         state["fgen_sine_start"] = time.monotonic()
 
+        # Route the Keysight TB_AO_MUX bus so ni9204_ain1/ni9207_ain1 can
+        # actually see ni9263's sine -- per the wiring you confirmed, that
+        # path (unlike T4/T7/T8/USB-6421's direct DAC0->AIN1 self-loop) only
+        # exists through this shared mux, and ain_ao_route's teardown always
+        # re-opens every crosspoint before this test's slot even starts (see
+        # teardown_tests), so this can't rely on that other test having left
+        # it routed -- it has to route it itself.
+        fgen_mux_tray = AIN_AOControl()
+        fgen_mux_tray._assert_34980a(daq)
+        fgen_mux_tray.startup_guard(daq)
+        target_port = AIN_AO_SOURCES["route_cdaq"]
+        dac_ch = fgen_mux_tray._chan(fgen_mux_tray.BANK1_BASE, target_port)
+        ok = fgen_mux_tray.connect_dac(daq, dac_ch)
+        print(f"[fgen_sweep] Routed port {target_port} ({dac_ch}) -> TB_AO_MUX  [{'OK' if ok else 'FAIL'}]",
+              flush=True)
+        state["fgen_mux_tray"] = fgen_mux_tray
+
     fgen_analog_daqs = state["fgen_analog_daqs"]
     step_s = 1.0 / FGEN_SINE_UPDATE_HZ
     n_steps = max(1, round(FGEN_SINE_BURST_S * FGEN_SINE_UPDATE_HZ))
@@ -509,18 +550,20 @@ def test_fgen_sweep(daq, publish, state):
 
 
 # --- AIN_AO analog output/sense rig -------------------------------------------
-# Outputs a constant AIN_AO_CONST_VOLTAGE from DAC0/port0 on
-# T4/T7/T8/USB-6421/NI-9263, and senses on AIN1/ai1 on
-# T4/T7/T8/USB-6421/NI-9204/NI-9207 (NI module mapping: cDAQ1Mod1=NI9263,
+# Outputs a constant AIN_AO_CONST_VOLTAGE. T4/T7/T8/USB-6421 each self-loop
+# directly on their own box -- DAC1->AIN0 (LabJack) / ao1->ai0 (NI),
+# confirmed wiring. NI-9263 (cDAQ1Mod1) only drives (ao0); NI-9204/NI-9207
+# (cDAQ1Mod2/3) only sense (ai1), reaching NI-9263's signal through the
+# shared Keysight TB_AO_MUX bus (NI module mapping: cDAQ1Mod1=NI9263,
 # cDAQ1Mod2=NI9204, cDAQ1Mod3=NI9207 -- confirmed from rack photo).
 AIN_AO_CONST_VOLTAGE = 1.0
 
 # (device_key, driver_family, device_id, out_channel_or_None, sense_channel_or_None)
 AIN_AO_ANALOG_DEVICES = [
-    ("t4", "labjack", "440020473", "DAC0", "AIN1"),
-    ("t7", "labjack", "470041016", "DAC0", "AIN1"),
-    ("t8", "labjack", "480011030", "DAC0", "AIN1"),
-    ("usb6421", "ni", "Dev1", "Dev1/ao0", "Dev1/ai1"),
+    ("t4", "labjack", "440020473", "DAC1", "AIN0"),
+    ("t7", "labjack", "470041016", "DAC1", "AIN0"),
+    ("t8", "labjack", "480011030", "DAC1", "AIN0"),
+    ("usb6421", "ni", "Dev1", "Dev1/ao1", "Dev1/ai0"),
     ("ni9263", "ni", "cDAQ1Mod1", "cDAQ1Mod1/ao0", None),
     ("ni9204", "ni", "cDAQ1Mod2", None, "cDAQ1Mod2/ai1"),
     ("ni9207", "ni", "cDAQ1Mod3", None, "cDAQ1Mod3/ai1"),
@@ -603,6 +646,8 @@ def teardown_tests(tests, state, daq, inst):
                 pass
     if "fgen_sweep" in tests and "fgen" in state:
         state["fgen"]._open_all(daq)
+    if "fgen_sweep" in tests and "fgen_mux_tray" in state:
+        state["fgen_mux_tray"]._open_all(daq)
     if "fgen_sweep" in tests and "fgen_analog_daqs" in state:
         for device_key, analog_daq in state["fgen_analog_daqs"].items():
             try:
