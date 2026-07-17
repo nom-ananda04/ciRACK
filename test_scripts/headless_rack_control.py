@@ -624,38 +624,40 @@ def setup_runs(client, dataset, tests, asset_rid):
     so every session's data lands under the same asset instead of
     scattering across disconnected objects. Returns {test_id: run}.
 
-    ASSET_RID is what keeps things organized run after run: each session's
-    dataset is attached directly to that one constant asset
-    (asset.add_dataset), under the test id as its data_scope_name, and each
-    Run is created via asset.create_run so it's tied to the same asset too.
+    ASSET_RID is what keeps things organized run after run: each Run is
+    created via asset.create_run(..., asset_rids=[asset.rid]), which is what
+    ties it to the one constant asset -- that structural link is enough; the
+    dataset itself is only attached to the Run (core_run.add_dataset), not
+    separately to the asset.
 
-    Because the asset is persistent, a prior session already registered a
-    data scope under each test id, pointing at THAT session's (now stale)
-    dataset -- add_dataset()'s underlying API call 400s if you try to add a
-    data_scope_name that's already registered on the asset (confirmed from a
-    real "POST .../asset/{rid}/data-sources" 400 on the second run against
-    an already-populated asset). So any scope already present under a test
-    id gets removed first, then re-added pointing at this session's dataset.
+    IMPORTANT: this used to *also* call asset.add_dataset(data_scope_name=
+    test_id, dataset=dataset) directly on the asset, in addition to
+    attaching it to the run. That 409'd on real hardware ("Scout:
+    RefNamesAlreadyUsed", refNames=[test_id]) the moment core_run.add_dataset
+    ran right after it -- a Run tied to an asset apparently shares the same
+    ref-name namespace as that asset's own directly-attached data scopes, so
+    registering the same name in both places at once collides. Attaching at
+    the Run level only (below) is what avoids that going forward.
+
+    That old code already ran against the real asset before this fix, so it
+    may have left stale data scopes directly on the asset under some test
+    ids' names -- those would still collide with a Run trying to use the
+    same ref_name, even though nothing here registers them anymore. So any
+    leftover direct scope matching a test id gets removed first.
 
     Each run is open-ended (end=None): it represents "this test session is
     still live," not a fixed historical window. close_runs() below sets the
     end timestamp on the way out.
     """
     asset = client.get_asset(asset_rid)
-    existing_scopes = {name for name, _scope_type in asset.list_data_scopes()}
+
+    stale_scopes = {name for name, _scope_type in asset.list_data_scopes()} & set(tests)
+    if stale_scopes:
+        asset.remove_data_scopes(names=sorted(stale_scopes))
 
     session_start = datetime.now(timezone.utc)
     created = {}
     for test_id in tests:
-        # data_scope_name=test_id: lets data be resolved by scope/ref name
-        # consistently, since the same test id keeps mapping to a brand new
-        # dataset every time this script runs again -- see the docstring
-        # above for why a stale scope under that name has to be removed
-        # first rather than just re-added.
-        if test_id in existing_scopes:
-            asset.remove_data_scopes(names=[test_id])
-        asset.add_dataset(data_scope_name=test_id, dataset=dataset)
-
         core_run = asset.create_run(
             name=f"{test_id} - {session_start.isoformat()}",
             start=session_start,
