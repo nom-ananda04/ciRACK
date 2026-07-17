@@ -90,12 +90,18 @@ def load_config(path: pathlib.Path) -> dict:
     # the dataset, it just won't be organized under a Run/Asset.
     asset_rid = raw.get("asset_rid") or None
 
+    # test_duration_s: how long each continuous test runs, by itself,
+    # before main() moves on to the next enabled test (see
+    # DEFAULT_TEST_DURATION_S above).
+    test_duration_s = float(raw.get("test_duration_s") or DEFAULT_TEST_DURATION_S)
+
     return {
         "dataset_rid": dataset_rid,
         "dataset_name": dataset_name,
         "drivers": drivers,
         "tests": enabled_tests,
         "asset_rid": asset_rid,
+        "test_duration_s": test_duration_s,
     }
 
 
@@ -123,6 +129,17 @@ AIN_AO_SOURCES = {
 MAIN_RESOURCE = Counter34980aControl.RESOURCE           # all 6 classes point at the same 34980A frame
 POLL_S = 0.5
 
+# How long each continuous test (di_raster_scan, counter_totalize,
+# multi_counter_clk, ain_ao_route, fgen_sweep) gets to run, by itself,
+# before main() tears it down and moves on to the next enabled test -- see
+# main()'s docstring-level comment for why this replaced the old
+# "every enabled test gets a turn every poll pass, forever" model. None of
+# these tests have a natural end of their own except fgen_sweep (one full
+# DAC x port sweep is ~100s per its own docstring -- give it a duration of
+# at least that if you want full sweeps to complete rather than being cut
+# off mid-route).
+DEFAULT_TEST_DURATION_S = 60.0
+
 
 def _now_ns() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1e9)
@@ -133,19 +150,22 @@ def _now_ns() -> int:
 # than "test1"/"test2" so they stay self-documenting and line up with the
 # config file's "tests" list, TEST_REQUIRED_DRIVER, etc.
 #
-# No round-robin/generator scheduling: each continuous test (di_raster_scan,
-# counter_totalize, multi_counter_clk, ain_ao_route, fgen_sweep) does its own
-# one-time setup on first call (stashed in the `state` dict passed in) and
-# then does one poll/publish step, called straight, one after the other, in
-# a fixed order every pass through main()'s loop -- see CONTINUOUS_TESTS
-# below for that order (fgen_sweep self-paces via a stashed "next sweep at"
-# timestamp rather than actually running every pass -- see its docstring).
-# Teardown for multi_counter_clk/ain_ao_route/fgen_sweep happens once,
-# explicitly, in main()'s `finally` block.
-#
-# do_drive is a bounded one-shot (4 toggles, then done) -- see
-# ONE_SHOT_TESTS below and the module docstring for why it runs once,
-# before the main loop starts, instead of every pass.
+# Strictly sequential, one test running at a time -- never interleaved:
+# main() runs each enabled test, in order (see ONE_SHOT_TESTS then
+# CONTINUOUS_TESTS below), all the way to completion before starting the
+# next one. do_drive (and any other one-shot test) completes on its own (4
+# toggles, then done). Each continuous test (di_raster_scan,
+# counter_totalize, multi_counter_clk, ain_ao_route, fgen_sweep) has no
+# natural end of its own -- it does its one-time setup on first call
+# (stashed in a `state` dict that's fresh for that test only) and then does
+# one poll/publish step per pass, same as always, but main() now runs that
+# loop for exactly DEFAULT_TEST_DURATION_S / config's test_duration_s
+# seconds for THIS test alone, tears it down immediately (teardown_tests(),
+# called right then, not once at the very end for every test), and only
+# then moves on to the next enabled test. fgen_sweep still self-paces its
+# own sweep-vs-pause cycle internally via a stashed "next sweep at"
+# timestamp (see its docstring) -- but that cycle now runs within its own
+# dedicated time slot, not interleaved with any other test.
 # ============================================================================
 
 # --- DI stimulus rig ---------------------------------------------------------
@@ -557,7 +577,10 @@ def test_ain_ao_route(daq, publish, state):
 
 
 def teardown_tests(tests, state, daq, inst):
-    """Run once, on the way out."""
+    """Called once per test, right when that one test's time slot ends (see
+    main()) -- `tests` is a singleton set containing just that test's id,
+    and `state` is that same test's own fresh dict, so only the matching
+    branch below ever fires."""
     if "multi_counter_clk" in tests and ENABLE_CLK and "multi_counter" in state:
         state["multi_counter"].clk_off(inst)
     if "ain_ao_route" in tests and "ain_ao" in state:
@@ -598,10 +621,12 @@ def teardown_tests(tests, state, daq, inst):
                 pass
 
 
-# Continuous tests, called straight, one after the other, in THIS order,
-# every pass through main()'s loop. fgen_sweep is here too, not in
-# ONE_SHOT_TESTS -- it repeats forever (see its docstring for the
-# main-loop-stalls-per-cycle tradeoff that comes with that).
+# Continuous tests -- each one gets its OWN dedicated time slot (see
+# DEFAULT_TEST_DURATION_S / the module-level "Tests" comment above), run
+# strictly one at a time in THIS order, never interleaved with each other
+# or with the one-shot tests below. fgen_sweep is here too, not in
+# ONE_SHOT_TESTS, since it's a repeating poller within its own slot (see its
+# docstring for the sweep-vs-pause cycle tradeoff that comes with that).
 CONTINUOUS_TESTS = [
     ("di_raster_scan", lambda daq, inst, publish, state: test_di_raster_scan(daq, publish, state)),
     ("counter_totalize", lambda daq, inst, publish, state: test_counter_totalize(inst, publish, state)),
@@ -610,44 +635,52 @@ CONTINUOUS_TESTS = [
     ("fgen_sweep", lambda daq, inst, publish, state: test_fgen_sweep(daq, publish, state)),
 ]
 
-# One-shot tests: id -> the callable to run once, before the main loop starts.
-# do_drive is here, not in CONTINUOUS_TESTS -- it's a bounded four-toggle
-# test ported from do_send_output.py, not a per-pass poller (see its
-# docstring); it handles its own teardown internally (finally: safe_off()).
+# One-shot tests: id -> the callable to run once, to completion, before
+# moving on to the next enabled test (see ONE_SHOT_TESTS_ORDER below for
+# where they slot in relative to CONTINUOUS_TESTS). do_drive is here, not in
+# CONTINUOUS_TESTS -- it's a bounded four-toggle test ported from
+# do_send_output.py that finishes on its own (see its docstring); it
+# handles its own teardown internally (finally: safe_off()).
 ONE_SHOT_TESTS = {
     "do_drive": lambda daq, inst, publish: test_do_drive(daq, publish),
 }
 
+# The full run order: one-shot tests first (in ONE_SHOT_TESTS' dict order),
+# then continuous tests (in CONTINUOUS_TESTS' list order) -- same relative
+# order as before this file's tests became strictly sequential, just with
+# each one now fully finishing (and being torn down) before the next starts,
+# instead of every enabled test getting a turn every poll pass forever.
+TEST_RUN_ORDER = (
+    [(test_id, "one_shot") for test_id in ONE_SHOT_TESTS]
+    + [(test_id, "continuous") for test_id, _run_fn in CONTINUOUS_TESTS]
+)
+CONTINUOUS_TEST_FNS = dict(CONTINUOUS_TESTS)
 
-def setup_runs(client, dataset, tests, asset_rid):
-    """One Run per enabled test id, tied to a persistent Asset (asset_rid)
-    so every session's data lands under the same asset instead of
-    scattering across disconnected objects. Returns {test_id: run}.
 
-    ASSET_RID is what keeps things organized run after run: each Run is
-    created via asset.create_run(..., asset_rids=[asset.rid]), which is what
-    ties it to the one constant asset -- that structural link is enough; the
-    dataset itself is only attached to the Run (core_run.add_dataset), not
-    separately to the asset.
+def get_and_clean_asset(client, asset_rid, tests):
+    """Fetch the one persistent Asset (asset_rid) every test's Run binds to,
+    and clear out any stale data scopes left directly on it under an
+    enabled test id's name.
+
+    ASSET_RID is what keeps things organized run after run: each test's Run
+    is created via asset.create_run(..., asset_rids=[asset.rid]), which is
+    what ties it to the one constant asset -- that structural link is
+    enough; the dataset itself is only attached to the Run
+    (run.add_dataset), not separately to the asset.
 
     IMPORTANT: this used to *also* call asset.add_dataset(data_scope_name=
     test_id, dataset=dataset) directly on the asset, in addition to
     attaching it to the run. That 409'd on real hardware ("Scout:
-    RefNamesAlreadyUsed", refNames=[test_id]) the moment core_run.add_dataset
-    ran right after it -- a Run tied to an asset apparently shares the same
+    RefNamesAlreadyUsed", refNames=[test_id]) the moment run.add_dataset ran
+    right after it -- a Run tied to an asset apparently shares the same
     ref-name namespace as that asset's own directly-attached data scopes, so
     registering the same name in both places at once collides. Attaching at
-    the Run level only (below) is what avoids that going forward.
-
-    That old code already ran against the real asset before this fix, so it
-    may have left stale data scopes directly on the asset under some test
-    ids' names -- those would still collide with a Run trying to use the
-    same ref_name, even though nothing here registers them anymore. So any
-    leftover direct scope matching a test id gets removed first.
-
-    Each run is open-ended (end=None): it represents "this test session is
-    still live," not a fixed historical window. close_runs() below sets the
-    end timestamp on the way out.
+    the Run level only (in start_run() below) is what avoids that going
+    forward -- but that old code already ran against the real asset before
+    this fix, so it may have left stale data scopes directly on the asset
+    under some test ids' names, which would still collide. So any leftover
+    direct scope matching an enabled test id gets removed here, once, up
+    front.
     """
     asset = client.get_asset(asset_rid)
 
@@ -655,30 +688,39 @@ def setup_runs(client, dataset, tests, asset_rid):
     if stale_scopes:
         asset.remove_data_scopes(names=sorted(stale_scopes))
 
-    session_start = datetime.now(timezone.utc)
-    created = {}
-    for test_id in tests:
-        core_run = asset.create_run(
-            name=f"{test_id} - {session_start.isoformat()}",
-            start=session_start,
-            end=None,
-        )
-        core_run.add_dataset(ref_name=test_id, dataset=dataset)
-        print(f"[run] {test_id}: run={core_run.rid}", flush=True)
-
-        created[test_id] = core_run
-    return created
+    return asset
 
 
-def close_runs(core_runs):
-    """Run once, on the way out: stamp an end time on every Run this session
-    created, so it stops reading as 'still live' in the app."""
-    now = datetime.now(timezone.utc)
-    for test_id, core_run in core_runs.items():
-        try:
-            core_run.update(end=now)
-        except Exception as e:
-            print(f"[run] failed to close out run for {test_id!r}: {e}", flush=True)
+def start_run(asset, dataset, test_id):
+    """Create and return one Run for exactly this test's time slot, tied to
+    the persistent asset (or None if no asset is configured -- data still
+    streams to the dataset either way). The run is open-ended (end=None)
+    until close_run() below stamps an end the moment this test's slot is
+    over -- since tests are strictly sequential now, this run's start/end
+    genuinely bound when this one test was executing, not the whole
+    session."""
+    if asset is None:
+        return None
+    run_start = datetime.now(timezone.utc)
+    core_run = asset.create_run(
+        name=f"{test_id} - {run_start.isoformat()}",
+        start=run_start,
+        end=None,
+    )
+    core_run.add_dataset(ref_name=test_id, dataset=dataset)
+    print(f"[run] {test_id}: run={core_run.rid}", flush=True)
+    return core_run
+
+
+def close_run(core_run, test_id):
+    """Stamp an end time on this one test's Run the moment its slot is
+    over, so it stops reading as 'still live' in the app."""
+    if core_run is None:
+        return
+    try:
+        core_run.update(end=datetime.now(timezone.utc))
+    except Exception as e:
+        print(f"[run] failed to close out run for {test_id!r}: {e}", flush=True)
 
 
 def main():
@@ -711,11 +753,10 @@ def main():
     print(f"[dataset] view live data here: {dataset.nominal_url}", flush=True)
 
     publisher = NominalCorePublisher(dataset_rid=dataset.rid)
-    core_runs = setup_runs(core_client, dataset, tests, config["asset_rid"]) if config["asset_rid"] else {}
+    asset = get_and_clean_asset(core_client, config["asset_rid"], tests) if config["asset_rid"] else None
 
     # Debug visibility: print once (not every pass) the first time each
-    # subsystem tag actually streams data, and the first time each test id
-    # starts running.
+    # subsystem tag actually streams data.
     seen_subsystems = set()
 
     def publish(channel_data: dict, tags: dict | None = None):
@@ -732,33 +773,36 @@ def main():
             )
         )
 
-    started_tests = set()
-
-    def _announce_test_start(test_id):
-        if test_id not in started_tests:
-            started_tests.add(test_id)
-            print(f"[test] {test_id!r} starting", flush=True)
-
     try:
-        # One-shot tests run once, before the main loop starts.
-        for test_id, run in ONE_SHOT_TESTS.items():
-            if test_id in tests:
-                _announce_test_start(test_id)
-                run(daq, inst, publish)
+        # Strictly sequential: each enabled test, in TEST_RUN_ORDER, runs
+        # all the way to completion -- including its own teardown and its
+        # own Run being closed out -- before the next one starts. Nothing
+        # here interleaves; see the module-level "Tests" comment above for
+        # why this replaced the old "every enabled test gets a turn every
+        # poll pass, forever" model.
+        for test_id, kind in TEST_RUN_ORDER:
+            if test_id not in tests:
+                continue
 
-        # Continuous tests: no round-robin/generator scheduling -- every
-        state = {}
-        try:
-            while True:
-                for test_id, run in CONTINUOUS_TESTS:
-                    if test_id in tests:
-                        _announce_test_start(test_id)
-                        run(daq, inst, publish, state)
-                time.sleep(POLL_S)
-        finally:
-            teardown_tests(tests, state, daq, inst)
+            print(f"[test] {test_id!r} starting", flush=True)
+            core_run = start_run(asset, dataset, test_id)
+            try:
+                if kind == "one_shot":
+                    ONE_SHOT_TESTS[test_id](daq, inst, publish)
+                else:
+                    state = {}
+                    deadline = time.monotonic() + config["test_duration_s"]
+                    run_fn = CONTINUOUS_TEST_FNS[test_id]
+                    try:
+                        while time.monotonic() < deadline:
+                            run_fn(daq, inst, publish, state)
+                            time.sleep(POLL_S)
+                    finally:
+                        teardown_tests({test_id}, state, daq, inst)
+            finally:
+                close_run(core_run, test_id)
+            print(f"[test] {test_id!r} complete", flush=True)
     finally:
-        close_runs(core_runs)
         publisher.close()
         daq.close()
 
