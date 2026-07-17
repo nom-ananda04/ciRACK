@@ -67,9 +67,40 @@ def _resolve_all(value, valid_ids, field_name):
 DEFAULT_DATASET_NAME = "Hardware CI RACK stream"
 
 
+def _read_config_json(path: pathlib.Path, *, attempts=3, delay_s=1.0) -> dict:
+    """Read and parse the config JSON, retrying a couple of times on a
+    transient empty/invalid read.
+
+    This file is synced to the machine actually running the script (e.g.
+    via OneDrive) from wherever it's edited -- confirmed on real hardware:
+    a run can start reading this file mid-sync and see a momentarily empty
+    or truncated file. `json.JSONDecodeError: Expecting value: line 1
+    column 1 (char 0)` is exactly what parsing an empty file produces.
+    Retrying a couple of times, with a short pause, gives the sync a
+    chance to finish instead of crashing the whole run on a one-off race.
+    """
+    last_exc = None
+    for attempt in range(1, attempts + 1):
+        try:
+            with open(path) as f:
+                text = f.read()
+            if not text.strip():
+                raise json.JSONDecodeError("file is empty", text, 0)
+            return json.loads(text)
+        except (json.JSONDecodeError, OSError) as e:
+            last_exc = e
+            if attempt < attempts:
+                print(f"[config] failed to read/parse {path} (attempt {attempt}/{attempts}): {e} "
+                      f"-- retrying in {delay_s}s (can happen if the file is still mid-sync)", flush=True)
+                time.sleep(delay_s)
+    raise RuntimeError(
+        f"Could not read valid JSON from config file {path!s} after {attempts} attempts: {last_exc}. "
+        f"Check that the file exists, is not empty, and has finished syncing from wherever it's edited."
+    ) from last_exc
+
+
 def load_config(path: pathlib.Path) -> dict:
-    with open(path) as f:
-        raw = json.load(f)
+    raw = _read_config_json(path)
 
     # dataset_rid: optional, matching the pattern in t4_validate.py -- set it
     # to reuse the same dataset across runs (so past runs stay findable in
