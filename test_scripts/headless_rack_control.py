@@ -85,23 +85,9 @@ def load_config(path: pathlib.Path) -> dict:
         print(f"[config] skipping test(s) {skipped}: required driver not in "
               f"enabled drivers {drivers}", flush=True)
 
-    # Optional, per-test-id -- see module docstring for why this is one
-    # template per test id rather than one shared template.
-    workbook_templates = raw.get("workbook_templates", {}) or {}
-    unknown = [t for t in workbook_templates if t not in ALL_TESTS]
-    if unknown:
-        raise ValueError(f"{path}: \"workbook_templates\" has unknown test id(s) {unknown}; "
-                          f"valid ids are {ALL_TESTS}")
-    no_template = [t for t in enabled_tests if not workbook_templates.get(t)]
-    if no_template:
-        print(f"[config] no workbook_templates entry for {no_template}: data still streams to "
-              f"the dataset, but no Run/Workbook will be created for these tests", flush=True)
-
-    # asset_rid: the one persistent Asset every session's Runs/Workbooks bind
-    # to (see setup_runs_and_workbooks' docstring for why this needs to be
-    # constant rather than created fresh like the dataset). Required only if
-    # at least one workbook_templates entry is configured -- checked in
-    # main(), not here, so a config with no templates at all doesn't need it.
+    # asset_rid: the one persistent Asset every session's Runs bind to (see
+    # setup_runs' docstring). Optional -- if omitted, data still streams to
+    # the dataset, it just won't be organized under a Run/Asset.
     asset_rid = raw.get("asset_rid") or None
 
     return {
@@ -109,7 +95,6 @@ def load_config(path: pathlib.Path) -> dict:
         "dataset_name": dataset_name,
         "drivers": drivers,
         "tests": enabled_tests,
-        "workbook_templates": workbook_templates,
         "asset_rid": asset_rid,
     }
 
@@ -634,42 +619,28 @@ ONE_SHOT_TESTS = {
 }
 
 
-def setup_runs_and_workbooks(client, dataset, tests, workbook_templates, asset_rid):
-    """One Run + one Workbook per enabled test id that has a template_rid in
-    workbook_templates (see module docstring). Returns {test_id: (run,
-    workbook)} for whatever actually got created -- tests with no
-    template_rid configured are simply absent from the returned dict.
+def setup_runs(client, dataset, tests, asset_rid):
+    """One Run per enabled test id, tied to a persistent Asset (asset_rid)
+    so every session's data lands under the same asset instead of
+    scattering across disconnected objects. Returns {test_id: run}.
 
-    ASSET_RID is what keeps everything landing in "the same workbook" run
-    after run: a Workbook binds to exactly one Run OR one Asset (mutually
-    exclusive), and a per-session Run is a new object every time this script
-    runs -- so binding workbooks to the Run would mean a brand new,
-    disconnected workbook every run. Binding to one constant, persistent
-    Asset instead means every session's workbook opens against the same
-    object. Each session's dataset also gets attached directly to that
-    same asset (asset.add_dataset), under the test id as its
-    data_scope_name, so the asset (and the workbook(s) bound to it) can
-    always see the latest data -- not just whatever the Run happened to
-    reference.
+    ASSET_RID is what keeps things organized run after run: each session's
+    dataset is attached directly to that one constant asset
+    (asset.add_dataset), under the test id as its data_scope_name, and each
+    Run is created via asset.create_run so it's tied to the same asset too.
 
-    A Run is still created per test id (via asset.create_run, so it's tied
-    to the same asset) and is open-ended (end=None): it represents "this
-    test session is still live," not a fixed historical window. close_runs()
-    below sets the end timestamp on the way out.
+    Each run is open-ended (end=None): it represents "this test session is
+    still live," not a fixed historical window. close_runs() below sets the
+    end timestamp on the way out.
     """
     asset = client.get_asset(asset_rid)
 
     session_start = datetime.now(timezone.utc)
     created = {}
     for test_id in tests:
-        template_rid = workbook_templates.get(test_id)
-        if not template_rid:
-            continue  # already logged by load_config()
-
-        # data_scope_name=test_id: templates bind their charts to a dataset
-        # by scope/ref name, and using the test id itself as that name is
-        # what lets the same template keep resolving correctly against a
-        # brand new dataset every time this script runs again.
+        # data_scope_name=test_id: lets data be resolved by scope/ref name
+        # consistently, since the same test id keeps mapping to a brand new
+        # dataset every time this script runs again.
         asset.add_dataset(data_scope_name=test_id, dataset=dataset)
 
         core_run = asset.create_run(
@@ -678,12 +649,9 @@ def setup_runs_and_workbooks(client, dataset, tests, workbook_templates, asset_r
             end=None,
         )
         core_run.add_dataset(ref_name=test_id, dataset=dataset)
+        print(f"[run] {test_id}: run={core_run.rid}", flush=True)
 
-        template = client.get_workbook_template(template_rid)
-        workbook = template.create_workbook(asset=asset)
-        print(f"[workbook] {test_id}: run={core_run.rid} workbook={workbook.nominal_url}", flush=True)
-
-        created[test_id] = (core_run, workbook)
+        created[test_id] = core_run
     return created
 
 
@@ -691,11 +659,11 @@ def close_runs(core_runs):
     """Run once, on the way out: stamp an end time on every Run this session
     created, so it stops reading as 'still live' in the app."""
     now = datetime.now(timezone.utc)
-    for test_id, (core_run, _workbook) in core_runs.items():
+    for test_id, core_run in core_runs.items():
         try:
             core_run.update(end=now)
         except Exception as e:
-            print(f"[workbook] failed to close out run for {test_id!r}: {e}", flush=True)
+            print(f"[run] failed to close out run for {test_id!r}: {e}", flush=True)
 
 
 def main():
@@ -716,7 +684,8 @@ def main():
 
     # One NominalClient for the whole session: resolves the dataset below
     # (either a fixed dataset_rid, reused across runs, or a fresh one), and
-    # (separately) creates the Runs/Workbooks in setup_runs_and_workbooks.
+    # (separately) creates the Runs in setup_runs, all bound to the same
+    # asset_rid.
     core_client = NominalClient.from_profile("default")
     if config["dataset_rid"]:
         dataset = core_client.get_dataset(config["dataset_rid"])
@@ -727,16 +696,7 @@ def main():
     print(f"[dataset] view live data here: {dataset.nominal_url}", flush=True)
 
     publisher = NominalCorePublisher(dataset_rid=dataset.rid)
-    if config["workbook_templates"] and not config["asset_rid"]:
-        raise RuntimeError(
-            "config has workbook_templates entries but no \"asset_rid\" -- set asset_rid to the "
-            "persistent Asset every session's Runs/Workbooks should bind to (see "
-            "setup_runs_and_workbooks' docstring)"
-        )
-    core_runs = (
-        setup_runs_and_workbooks(core_client, dataset, tests, config["workbook_templates"], config["asset_rid"])
-        if config["workbook_templates"] else {}
-    )
+    core_runs = setup_runs(core_client, dataset, tests, config["asset_rid"]) if config["asset_rid"] else {}
 
     # Debug visibility: print once (not every pass) the first time each
     # subsystem tag actually streams data, and the first time each test id

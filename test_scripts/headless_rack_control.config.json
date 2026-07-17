@@ -1,15 +1,7 @@
 {
-    "dataset_rid": "ri.scout.cerulean-staging.asset.18bde477-8abc-4bc1-818c-f16bdb08819d",
+    "dataset_rid": "ri.catalog.cerulean-staging.dataset.68e66cc7-7904-4364-801a-508d9a722c80",
     "dataset_name": "Hardware CI RACK stream",
-    "asset_rid": "ri.workbook_template.main.asset.PLACEHOLDER",
+    "asset_rid": "ri.scout.cerulean-staging.asset.18bde477-8abc-4bc1-818c-f16bdb08819d",
     "drivers": "all",
-    "tests": "all",
-    "workbook_templates": {
-        "counter_totalize": "ri.workbook_template.main.template.PLACEHOLDER",
-        "di_raster_scan": "ri.workbook_template.main.template.PLACEHOLDER",
-        "do_drive": "ri.workbook_template.main.template.PLACEHOLDER",
-        "multi_counter_clk": "ri.workbook_template.main.template.PLACEHOLDER",
-        "fgen_sweep": "ri.workbook_template.main.template.PLACEHOLDER",
-        "ain_ao_route": "ri.workbook_template.main.template.PLACEHOLDER"
-    }
+    "tests": "all"
 }
