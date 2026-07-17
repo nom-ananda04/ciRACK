@@ -1,5 +1,5 @@
 {
-    "dataset_rid": null,
+    "dataset_rid": "ri.catalog.cerulean-staging.dataset.4db6e212-c5ce-4c76-993c-90c95561477f",
     "dataset_name": "Hardware CI RACK stream",
     "asset_rid": "ri.scout.cerulean-staging.asset.18bde477-8abc-4bc1-818c-f16bdb08819d",
     "drivers": "all",
