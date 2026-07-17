@@ -145,6 +145,31 @@ def _now_ns() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1e9)
 
 
+def _with_retry(fn, *, attempts=3, delay_s=1.0, label=""):
+    """Call fn() (a zero-arg callable) and return its result, retrying on
+    exception up to `attempts` times with a delay_s pause in between.
+
+    LabJack (LJM) connections over USB can throw a transient error --
+    confirmed on real hardware as "LJME_RECONNECT_FAILED" (error code 1239)
+    from a read_digital_line() call right after a successful open() -- even
+    when the device and wiring are fine, just from a USB/driver-level
+    hiccup. Without this, one flaky read/write crashes the entire script;
+    with it, a transient failure gets a couple of retries before actually
+    giving up and re-raising.
+    """
+    last_exc = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return fn()
+        except Exception as e:
+            last_exc = e
+            if attempt < attempts:
+                print(f"[retry] {label or 'call'} failed (attempt {attempt}/{attempts}): {e} "
+                      f"-- retrying in {delay_s}s", flush=True)
+                time.sleep(delay_s)
+    raise last_exc
+
+
 # ============================================================================
 # Tests -- one function per test id in ALL_TESTS. Named after the id rather
 # than "test1"/"test2" so they stay self-documenting and line up with the
@@ -300,7 +325,7 @@ def test_do_drive(daq, publish):
             listen_daq = InstroDAQ(name=f"stim_{device_id}", driver=NIDAQDriver(device_id=device_id))
         else:
             raise ValueError(f"unknown stimulus driver family {driver_family!r}")
-        listen_daq.open()
+        _with_retry(lambda d=listen_daq: d.open(), label=f"{listen_alias}.open()")
         listen_daq.configure_digital_line(
             direction=Direction.INPUT,
             physical_channel=phys_ch,
@@ -312,6 +337,21 @@ def test_do_drive(daq, publish):
     HOLD_S = 1.0
     EPSILON_S = 0.02   # small gap before the transition so the plot holds flat
 
+    def _read_all_listeners():
+        # Wrapped in _with_retry per-alias: a real hardware run hit
+        # "LJME_RECONNECT_FAILED" here (a transient LJM/USB hiccup, not a
+        # wiring or sequencing problem -- confirmed do_drive runs alone,
+        # first, before anything else touches these devices) -- retrying a
+        # couple of times before giving up avoids one flaky read crashing
+        # the whole script.
+        return {
+            alias: float(_with_retry(
+                lambda a=alias, d=listen_daq: d.read_digital_line(channel=a).latest,
+                label=f"{alias}.read_digital_line()",
+            ))
+            for alias, listen_daq in listeners.items()
+        }
+
     try:
         for level in [1, 0, 1, 0]:
             do_drive.set_drive(daq, level)
@@ -322,13 +362,11 @@ def test_do_drive(daq, publish):
             # vertical edge (square wave), instead of a diagonal ramp
             # between a single point per level. Each point also carries
             # every listener's own observed level alongside the commanded one.
-            seen = {alias: float(listen_daq.read_digital_line(channel=alias).latest)
-                    for alias, listen_daq in listeners.items()}
+            seen = _read_all_listeners()
             publish({do_drive.DO_DRIVE_ALIAS: float(level), **seen}, tags={"subsystem": "do_drive"})
             time.sleep(HOLD_S - EPSILON_S)
 
-            seen = {alias: float(listen_daq.read_digital_line(channel=alias).latest)
-                    for alias, listen_daq in listeners.items()}
+            seen = _read_all_listeners()
             publish({do_drive.DO_DRIVE_ALIAS: float(level), **seen}, tags={"subsystem": "do_drive"})
             time.sleep(EPSILON_S)
     finally:
