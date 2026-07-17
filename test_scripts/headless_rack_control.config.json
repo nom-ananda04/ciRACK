@@ -1,5 +1,7 @@
 {
+    "dataset_rid": "ri.scout.cerulean-staging.asset.18bde477-8abc-4bc1-818c-f16bdb08819d",
     "dataset_name": "Hardware CI RACK stream",
+    "asset_rid": "ri.workbook_template.main.asset.PLACEHOLDER",
     "drivers": "all",
     "tests": "all",
     "workbook_templates": {
