@@ -580,9 +580,19 @@ def test_fgen_sweep(daq, publish, state):
             if out_ch:
                 fgen_analog_daqs[device_key].write_analog_value(channel=f"{device_key}_ao0", value=sine_value)
             if sense_ch:
-                measurement = fgen_analog_daqs[device_key].read_analog()
                 sense_alias = f"{device_key}_ain1"
-                readings[sense_alias] = float(measurement.channel_data[sense_alias][-1])
+                measurement = fgen_analog_daqs[device_key].read_analog()
+                # read_analog() may return a single Measurement or a list of
+                # them (see InstroDAQ.read_analog's docstring); confirmed on
+                # real hardware that its channel_data key doesn't always
+                # match the alias passed to configure_analog_channel. With
+                # exactly one AI channel configured per device, there's
+                # exactly one channel_data entry either way -- read whatever
+                # key is actually there instead of assuming it's sense_alias.
+                if isinstance(measurement, list):
+                    measurement = measurement[0]
+                (_, values), = measurement.channel_data.items()
+                readings[sense_alias] = float(values[-1])
         publish(readings, tags={"subsystem": "fgen_diff_analog"})
         time.sleep(step_s)
 
@@ -687,7 +697,13 @@ def test_ain_ao_route(daq, publish, state):
         if sense_ch:
             sense_alias = f"{device_key}_ain1"
             measurement = analog_daqs[device_key].read_analog()
-            readings[sense_alias] = float(measurement.channel_data[sense_alias][-1])
+            # See the matching comment in test_fgen_sweep: don't assume the
+            # returned Measurement's channel_data key matches the alias we
+            # configured -- confirmed mismatched on real hardware.
+            if isinstance(measurement, list):
+                measurement = measurement[0]
+            (_, values), = measurement.channel_data.items()
+            readings[sense_alias] = float(values[-1])
     publish(readings, tags={"subsystem": "ain_ao_analog"})
 
 
