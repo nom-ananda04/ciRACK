@@ -1,110 +1,6 @@
-"""Headless rack control: runs the btop_test_suite control classes with no
-Connect UI, against ONE shared VISA session to the 34980A, and streams
-live channel data to Nominal Core via instro's NominalCorePublisher.
 
-Concurrency model (explicit choice, matches the earlier discussion about
-merging all the per-script main()s): a single shared VISA session, single
-process, single thread, no round-robin/generator scheduling -- every pass
-through the main loop just calls each enabled continuous test straight,
-one after the other, in a fixed order (see CONTINUOUS_TESTS). Nothing
-blocks on its own infinite while-loop the way the individual Connect
-scripts do, so they can all share the one physical instrument connection
-safely.
-
-Not everything fits a per-pass step, and this file does NOT paper over
-that:
-
-  * diRasterScan, doDriveControl, Counter34980aControl -- genuinely
-    continuous pollers/writers. These run every pass below.
-
-  * MultiCounterControl -- clk_on()/clk_off() are quick single calls and
-    run every pass. Its count_labjack()/count_nidaqmx(), however, are each
-    their own blocking `while True` loop written for a dedicated script
-    (they poll a checkbox to know when to stop). Calling either one here
-    would hijack the whole loop, so they are NOT wired in. Turning
-    per-device LabJack/NI counting into a headless, single-shot-per-pass
-    read is a real refactor of those methods, not just a wiring change --
-    flagging it rather than quietly reimplementing behavior that wasn't
-    asked for.
-
-  * doDriveControl -- test_do_drive() is NOT a continuous poller. Ported
-    from do_send_output.py, it's a bounded one-shot: toggle DO0 1,0,1,0
-    (1s hold each) and return. Runs once, before the main loop starts (see
-    ONE_SHOT_TESTS), and handles its own teardown internally.
-
-  * FGEN_DIFFControl.sweep() -- ported from btop_fgen_diff_control.py:
-    repeats forever, but each individual sweep() call is a multi-second,
-    multi-step relay procedure (DWELL_S hold per route, ~100s per full
-    sweep). It's wired into CONTINUOUS_TESTS like the other pollers, but
-    unlike them it does NOT return quickly -- when its pause-between-cycles
-    window elapses, the call to test_fgen_sweep() blocks the entire main
-    loop for the duration of that sweep. That's the real behavior of the
-    ported script (a dedicated `while True` loop with nothing else sharing
-    its process), not a bug in the port -- see test_fgen_sweep()'s docstring.
-
-  * AIN_AOControl -- test_ain_ao_route() is NOT AIN_AOControl.route_all_dac()
-    (that's still the multi-second full sweep, unused here). It's the
-    headless port of a separate Connect script that polls a single-source
-    selection (AIN_AO_SOURCE below) and re-routes on change, same shape as
-    the other continuous tests -- runs every pass, does its own one-time
-    setup on first call.
-
-Nominal Core: a brand new, empty dataset is created every time this script
-starts (NominalClient.create_dataset(name=config["dataset_name"])) --
-there's no dataset_rid in the config anymore, since a fresh dataset is made
-each run rather than reused. Auth goes through
-NominalClient.from_profile("default") both for that dataset creation and,
-separately, inside instro's NominalCorePublisher for the raw channel-data
-stream -- so a ~/.nominal profile needs to exist before this will actually
-connect.
-
-Runs and workbooks: since every run creates a brand new dataset (a new RID
-each time), "the same dataset" isn't what ties one session's data to the
-next -- it's the Workbook. Each enabled test that has a template_rid
-configured in "workbook_templates" gets its own Run (an open-ended,
-start-now/end-None window) and its own Workbook instantiated from that
-test's template against that run, with the fresh dataset attached under
-ref_name=test_id. Pointing every run at the same template_rid is what makes
-each new session look like "the same workbook" -- even though a new
-dataset and a new Workbook object both get created every time. A test with
-no template_rid configured still streams data into the dataset as normal --
-it just has no dedicated run/workbook, and load_config() prints a note when
-this happens rather than staying silent.
-
-Config file (headless_rack_control.config.json, alongside this script):
-
-    {
-        "dataset_name": "Hardware CI RACK stream",
-        "drivers": "all" | ["keysight_34980a", "labjack", "ni_daqmx"],
-        "tests": "all" | ["counter_totalize", "di_raster_scan", "do_drive",
-                           "multi_counter_clk", "fgen_sweep", "ain_ao_route"],
-        "workbook_templates": {
-            "counter_totalize": "ri.workbook_template...",
-            "di_raster_scan": "ri.workbook_template...",
-            ...
-        }
-    }
-
-"dataset_name" is optional (defaults to "Hardware CI RACK stream" if
-omitted). "workbook_templates" is optional and per-test-id -- omit a test
-id (or the whole field) to skip run/workbook creation for it while still
-streaming its data.
-
-"drivers" and "tests" are two different axes (confirmed this mapping
-explicitly rather than guessing): "drivers" is which hardware family is in
-play (Keysight 34980A / LabJack / NI-DAQmx), "tests" is which of the 6
-classes' actions actually runs. Every test currently wired into the
-round-robin below talks to the 34980A only (counter/DI/DO/FGEN/AIN-AO are
-all Keysight-side; MultiCounterControl's per-device LabJack/NI counting
-isn't wired in at all -- see the note above) -- so right now
-TEST_REQUIRED_DRIVER maps every test to "keysight_34980a", and picking only
-"labjack" or "ni_daqmx" in "drivers" will legitimately skip every test
-until per-device counting gets added. That's flagged at startup rather
-than silently doing nothing.
-"""
 
 import json
-import math
 import pathlib
 import time
 from datetime import datetime, timezone
@@ -470,54 +366,6 @@ class _StreamClient:
         self._publish({name: float(value)}, tags={"subsystem": stream_id})
 
 
-# --- FGEN/DIFF analog output/sense rig ---------------------------------------
-# Same device roles and rig structure as the ain_ao_route analog rig above
-# ("do the same thing"), but driving a sine wave instead of a flat constant:
-# FGEN_SINE_FREQ_HZ Hz, amplitude FGEN_SINE_AMPLITUDE_V, offset
-# FGEN_SINE_OFFSET_V. Runs every pass through the main loop, independent of
-# the sweep-cycle pacing below (sweep() itself still only fires every
-# CYCLE_PAUSE_S / after each ~100s sweep completes).
-#
-# CAVEAT: test_fgen_sweep only gets called once every POLL_S (0.5s default)
-# except while an actual sweep is running -- that's ~2 samples/second, right
-# at the Nyquist limit for a 1Hz sine and nowhere near enough to reconstruct
-# a smooth waveform. This is a software-timed point-by-point value (same as
-# every other output in this file -- no hardware-timed waveform generation
-# is implemented for LabJack/NI here), so expect a coarse, stair-stepped
-# approximation of the sine in Core, not a clean curve. Flagging this rather
-# than pretending it's a real analog sine output.
-FGEN_SINE_FREQ_HZ = 1.0
-FGEN_SINE_AMPLITUDE_V = 1.0
-FGEN_SINE_OFFSET_V = 1.0
-
-# instro has no hardware-timed/buffered analog OUTPUT for either driver as
-# of this writing (confirmed directly from source: NI's configure_ao_channel
-# says "until hardware timed analog output is implemented"; LabJack's just
-# calls write_analog_value straight through to ljm.eWriteName) -- so a
-# "real" sine has to come from stepping the value fast enough in software,
-# not from a true hardware waveform generator. FGEN_SINE_UPDATE_HZ steps
-# well above the 1Hz signal's Nyquist rate (40 samples/cycle), and
-# FGEN_SINE_BURST_S is how long each call to test_fgen_sweep spends doing
-# that stepping before returning control to the main loop -- still a single
-# blocking call, no real threads, consistent with the rest of this file
-# (fgen.sweep() itself already blocks for ~100s per cycle). The tradeoff:
-# while this test is enabled, every pass through the main loop takes
-# roughly FGEN_SINE_BURST_S longer, on top of the usual time.sleep(POLL_S).
-FGEN_SINE_UPDATE_HZ = 40.0
-FGEN_SINE_BURST_S = 0.5
-
-FGEN_ANALOG_DEVICES = [
-    # (device_key, driver_family, device_id, output_channel or None, sense_channel or None)
-    ("t4", "labjack", "440020473", "DAC0", "AIN1"),
-    ("t7", "labjack", "470041016", "DAC0", "AIN1"),
-    ("t8", "labjack", "480011030", "DAC0", "AIN1"),
-    ("usb6421", "ni", "Dev1", "Dev1/ao0", "Dev1/ai1"),
-    ("ni9263", "ni", "cDAQ1Mod1", "cDAQ1Mod1/ao0", None),
-    ("ni9204", "ni", "cDAQ1Mod2", None, "cDAQ1Mod2/ai1"),
-    ("ni9207", "ni", "cDAQ1Mod3", None, "cDAQ1Mod3/ai1"),
-]
-
-
 def test_fgen_sweep(daq, publish, state):
     """Ported from btop_fgen_diff_control.py: repeat forever, one full
     DAC-source x port sweep per cycle, CYCLE_PAUSE_S between cycles.
@@ -532,11 +380,7 @@ def test_fgen_sweep(daq, publish, state):
     loop (every other enabled test) stalls for the duration of each sweep.
     That's a real tradeoff of the no-threading design, not a bug; flagging
     it here rather than hiding it.
-
-    Also drives the FGEN/DIFF analog output/sense rig (see
-    FGEN_ANALOG_DEVICES above): a FGEN_SINE_FREQ_HZ sine wave out of
-    DAC0/port0 on every output-capable device, and a fresh AIN1/ai1 reading
-    on every sense-capable device, published every pass."""
+    """
     if "fgen" not in state:
         fgen = FGEN_DIFFControl()
         fgen._assert_34980a(daq)
@@ -545,56 +389,6 @@ def test_fgen_sweep(daq, publish, state):
         state["fgen"] = fgen
         state["fgen_stream_client"] = _StreamClient(publish)
         state["fgen_next_sweep_at"] = 0.0   # run the first sweep immediately
-
-        # One InstroDAQ session per unique analog device, configured with
-        # whichever of an AO channel / AI channel apply to it.
-        fgen_analog_daqs = {}
-        for device_key, driver_family, device_id, out_ch, sense_ch in FGEN_ANALOG_DEVICES:
-            if driver_family == "labjack":
-                a_daq = InstroDAQ(name=f"fgen_analog_{device_id}", driver=LabJackTSeriesDriver(device_id=device_id))
-            elif driver_family == "ni":
-                a_daq = InstroDAQ(name=f"fgen_analog_{device_id}", driver=NIDAQDriver(device_id=device_id))
-            else:
-                raise ValueError(f"unknown analog driver family {driver_family!r}")
-            a_daq.open()
-            if out_ch:
-                a_daq.configure_analog_channel(direction=Direction.OUTPUT, physical_channel=out_ch, alias=f"{device_key}_ao0")
-            if sense_ch:
-                a_daq.configure_analog_channel(direction=Direction.INPUT, physical_channel=sense_ch, alias=f"{device_key}_ain1")
-            fgen_analog_daqs[device_key] = a_daq
-        state["fgen_analog_daqs"] = fgen_analog_daqs
-        state["fgen_sine_start"] = time.monotonic()
-
-    # Sine output + sense: step FGEN_SINE_UPDATE_HZ times per call for
-    # FGEN_SINE_BURST_S (see the constants above for why this is a fast
-    # blocking burst rather than one value per pass) -- independent of the
-    # sweep-cycle pause below.
-    fgen_analog_daqs = state["fgen_analog_daqs"]
-    step_s = 1.0 / FGEN_SINE_UPDATE_HZ
-    n_steps = max(1, round(FGEN_SINE_BURST_S * FGEN_SINE_UPDATE_HZ))
-    for _ in range(n_steps):
-        elapsed = time.monotonic() - state["fgen_sine_start"]
-        sine_value = FGEN_SINE_OFFSET_V + FGEN_SINE_AMPLITUDE_V * math.sin(2 * math.pi * FGEN_SINE_FREQ_HZ * elapsed)
-        readings = {"fgen_sine_cmd": sine_value}
-        for device_key, driver_family, device_id, out_ch, sense_ch in FGEN_ANALOG_DEVICES:
-            if out_ch:
-                fgen_analog_daqs[device_key].write_analog_value(channel=f"{device_key}_ao0", value=sine_value)
-            if sense_ch:
-                sense_alias = f"{device_key}_ain1"
-                measurement = fgen_analog_daqs[device_key].read_analog()
-                # read_analog() may return a single Measurement or a list of
-                # them (see InstroDAQ.read_analog's docstring); confirmed on
-                # real hardware that its channel_data key doesn't always
-                # match the alias passed to configure_analog_channel. With
-                # exactly one AI channel configured per device, there's
-                # exactly one channel_data entry either way -- read whatever
-                # key is actually there instead of assuming it's sense_alias.
-                if isinstance(measurement, list):
-                    measurement = measurement[0]
-                (_, values), = measurement.channel_data.items()
-                readings[sense_alias] = float(values[-1])
-        publish(readings, tags={"subsystem": "fgen_diff_analog"})
-        time.sleep(step_s)
 
     if time.monotonic() < state["fgen_next_sweep_at"]:
         return   # still pausing between cycles
@@ -609,73 +403,14 @@ def test_fgen_sweep(daq, publish, state):
     state["fgen_next_sweep_at"] = time.monotonic() + fgen.CYCLE_PAUSE_S
 
 
-# --- Analog output/sense rig -------------------------------------------------
-# Beyond the TB_AO_MUX crosspoint routing above, this also drives a constant
-# value out of DAC0/port0 on every output-capable device and senses AIN1 on
-# every sense-capable device -- confirmed module list and roles:
-#   T4, T7, T8, USB-6421          -- both output (DAC0/ao0) AND sense (AIN1/ai1)
-#   NI-9263 (cDAQ1Mod1)           -- output only (ao0)
-#   NI-9204 (cDAQ1Mod2), NI-9207 (cDAQ1Mod3) -- sense only (ai1)
-# One InstroDAQ session per unique physical device (not per role) -- T4/T7/
-# T8/USB-6421 each get exactly one session with both an AO and an AI channel
-# configured on it.
-AIN_AO_CONST_VOLTAGE = 1.0   # constant value driven on every output device's DAC0/port0
+def test_ain_ao_route(daq, state):
 
-AIN_AO_ANALOG_DEVICES = [
-    # (device_key, driver_family, device_id, output_channel or None, sense_channel or None)
-    ("t4", "labjack", "440020473", "DAC0", "AIN1"),
-    ("t7", "labjack", "470041016", "DAC0", "AIN1"),
-    ("t8", "labjack", "480011030", "DAC0", "AIN1"),
-    ("usb6421", "ni", "Dev1", "Dev1/ao0", "Dev1/ai1"),
-    ("ni9263", "ni", "cDAQ1Mod1", "cDAQ1Mod1/ao0", None),
-    ("ni9204", "ni", "cDAQ1Mod2", None, "cDAQ1Mod2/ai1"),
-    ("ni9207", "ni", "cDAQ1Mod3", None, "cDAQ1Mod3/ai1"),
-]
-
-
-def test_ain_ao_route(daq, publish, state):
-    """Route whichever single source AIN_AO_SOURCE names onto the shared
-    TB_AO_MUX bus. This is the headless port of a Connect script that polled
-    a checkbox per source (route_daq1..route_daq4, route_cdaq) every 0.5s and
-    re-routed on change -- the only thing that changed is where the
-    selection comes from: AIN_AO_SOURCE (a plain constant below) instead of
-    client.get_value(cb_id), since there's no Connect client headless. Uses
-    the shared `daq` session passed in rather than calling
-    AIN_AOControl._create_daq() itself -- that would open a second InstroDAQ
-    session and *RST the instrument on top of whatever the other tests just
-    configured (see the module docstring).
-
-    Also drives the analog output/sense rig (see AIN_AO_ANALOG_DEVICES
-    above): a constant AIN_AO_CONST_VOLTAGE out of DAC0/port0 on every
-    output-capable device, and a fresh AIN1/ai1 reading on every
-    sense-capable device published every pass."""
     if "ain_ao" not in state:
         tray = AIN_AOControl()
         tray._assert_34980a(daq)
         tray.startup_guard(daq)
         state["ain_ao"] = tray
         state["ain_ao_last_selected"] = None
-
-        # One InstroDAQ session per unique analog device, configured with
-        # whichever of an AO channel / AI channel apply to it.
-        analog_daqs = {}
-        for device_key, driver_family, device_id, out_ch, sense_ch in AIN_AO_ANALOG_DEVICES:
-            if driver_family == "labjack":
-                a_daq = InstroDAQ(name=f"analog_{device_id}", driver=LabJackTSeriesDriver(device_id=device_id))
-            elif driver_family == "ni":
-                a_daq = InstroDAQ(name=f"analog_{device_id}", driver=NIDAQDriver(device_id=device_id))
-            else:
-                raise ValueError(f"unknown analog driver family {driver_family!r}")
-            a_daq.open()
-            if out_ch:
-                out_alias = f"{device_key}_ao0"
-                a_daq.configure_analog_channel(direction=Direction.OUTPUT, physical_channel=out_ch, alias=out_alias)
-                a_daq.write_analog_value(channel=out_alias, value=AIN_AO_CONST_VOLTAGE)
-            if sense_ch:
-                sense_alias = f"{device_key}_ain1"
-                a_daq.configure_analog_channel(direction=Direction.INPUT, physical_channel=sense_ch, alias=sense_alias)
-            analog_daqs[device_key] = a_daq
-        state["ain_ao_analog_daqs"] = analog_daqs
 
     tray = state["ain_ao"]
     target = AIN_AO_SOURCES.get(AIN_AO_SOURCE) if AIN_AO_SOURCE else None
@@ -690,22 +425,6 @@ def test_ain_ao_route(daq, publish, state):
             print(f"Routed port {target} ({dac_ch}) -> TB_AO_MUX  [{'OK' if ok else 'FAIL'}]")
         state["ain_ao_last_selected"] = target
 
-    # Read every sense-capable device's AIN1/ai1 every pass and publish.
-    analog_daqs = state["ain_ao_analog_daqs"]
-    readings = {}
-    for device_key, driver_family, device_id, out_ch, sense_ch in AIN_AO_ANALOG_DEVICES:
-        if sense_ch:
-            sense_alias = f"{device_key}_ain1"
-            measurement = analog_daqs[device_key].read_analog()
-            # See the matching comment in test_fgen_sweep: don't assume the
-            # returned Measurement's channel_data key matches the alias we
-            # configured -- confirmed mismatched on real hardware.
-            if isinstance(measurement, list):
-                measurement = measurement[0]
-            (_, values), = measurement.channel_data.items()
-            readings[sense_alias] = float(values[-1])
-    publish(readings, tags={"subsystem": "ain_ao_analog"})
-
 
 def teardown_tests(tests, state, daq, inst):
     """Run once, on the way out."""
@@ -713,32 +432,8 @@ def teardown_tests(tests, state, daq, inst):
         state["multi_counter"].clk_off(inst)
     if "ain_ao_route" in tests and "ain_ao" in state:
         state["ain_ao"]._open_all(daq)
-    if "ain_ao_route" in tests and "ain_ao_analog_daqs" in state:
-        for device_key, driver_family, device_id, out_ch, sense_ch in AIN_AO_ANALOG_DEVICES:
-            a_daq = state["ain_ao_analog_daqs"][device_key]
-            if out_ch:
-                try:
-                    a_daq.write_analog_value(channel=f"{device_key}_ao0", value=0.0)
-                except Exception:
-                    pass
-            try:
-                a_daq.close()
-            except Exception:
-                pass
     if "fgen_sweep" in tests and "fgen" in state:
         state["fgen"]._open_all(daq)
-    if "fgen_sweep" in tests and "fgen_analog_daqs" in state:
-        for device_key, driver_family, device_id, out_ch, sense_ch in FGEN_ANALOG_DEVICES:
-            a_daq = state["fgen_analog_daqs"][device_key]
-            if out_ch:
-                try:
-                    a_daq.write_analog_value(channel=f"{device_key}_ao0", value=0.0)
-                except Exception:
-                    pass
-            try:
-                a_daq.close()
-            except Exception:
-                pass
     if "di_raster_scan" in tests and "di_stim_daqs" in state:
         for di_alias, stim_daq in state["di_stim_daqs"].items():
             try:
@@ -759,7 +454,7 @@ CONTINUOUS_TESTS = [
     ("di_raster_scan", lambda daq, inst, publish, state: test_di_raster_scan(daq, publish, state)),
     ("counter_totalize", lambda daq, inst, publish, state: test_counter_totalize(inst, publish, state)),
     ("multi_counter_clk", lambda daq, inst, publish, state: test_multi_counter_clk(inst, publish, ENABLE_CLK, state)),
-    ("ain_ao_route", lambda daq, inst, publish, state: test_ain_ao_route(daq, publish, state)),
+    ("ain_ao_route", lambda daq, inst, publish, state: test_ain_ao_route(daq, state)),
     ("fgen_sweep", lambda daq, inst, publish, state: test_fgen_sweep(daq, publish, state)),
 ]
 
@@ -772,41 +467,41 @@ ONE_SHOT_TESTS = {
 }
 
 
-# def setup_runs_and_workbooks(client, dataset, tests, workbook_templates):
-#     """One Run + one Workbook per enabled test id that has a template_rid in
-#     workbook_templates (see module docstring). Returns {test_id: (run,
-#     workbook)} for whatever actually got created -- tests with no
-#     template_rid configured are simply absent from the returned dict.
+def setup_runs_and_workbooks(client, dataset, tests, workbook_templates):
+    """One Run + one Workbook per enabled test id that has a template_rid in
+    workbook_templates (see module docstring). Returns {test_id: (run,
+    workbook)} for whatever actually got created -- tests with no
+    template_rid configured are simply absent from the returned dict.
 
-#     Each run is open-ended (end=None): it represents "this test session is
-#     still live," not a fixed historical window. close_runs() below sets the
-#     end timestamp on the way out.
-#     """
-#     session_start = datetime.now(timezone.utc)
-#     created = {}
-#     for test_id in tests:
-#         template_rid = workbook_templates.get(test_id)
-#         if not template_rid:
-#             continue  # already logged by load_config()
+    Each run is open-ended (end=None): it represents "this test session is
+    still live," not a fixed historical window. close_runs() below sets the
+    end timestamp on the way out.
+    """
+    session_start = datetime.now(timezone.utc)
+    created = {}
+    for test_id in tests:
+        template_rid = workbook_templates.get(test_id)
+        if not template_rid:
+            continue  # already logged by load_config()
 
-#         core_run = client.create_run(
-#             name=f"{test_id} - {session_start.isoformat()}",
-#             start=session_start,
-#             end=None,
-#         )
-#         # ref_name=test_id: templates bind their charts to a dataset by
-#         # ref_name (see Run.add_dataset's docstring), and using the test id
-#         # itself as the ref_name is what lets the same template keep
-#         # resolving correctly against a brand new run (and a brand new
-#         # dataset) every time this script runs again.
-#         core_run.add_dataset(ref_name=test_id, dataset=dataset)
+        core_run = client.create_run(
+            name=f"{test_id} - {session_start.isoformat()}",
+            start=session_start,
+            end=None,
+        )
+        # ref_name=test_id: templates bind their charts to a dataset by
+        # ref_name (see Run.add_dataset's docstring), and using the test id
+        # itself as the ref_name is what lets the same template keep
+        # resolving correctly against a brand new run (and a brand new
+        # dataset) every time this script runs again.
+        core_run.add_dataset(ref_name=test_id, dataset=dataset)
 
-#         template = client.get_workbook_template(template_rid)
-#         workbook = template.create_workbook(run=core_run)
-#         print(f"[workbook] {test_id}: run={core_run.rid} workbook={workbook.nominal_url}", flush=True)
+        template = client.get_workbook_template(template_rid)
+        workbook = template.create_workbook(run=core_run)
+        print(f"[workbook] {test_id}: run={core_run.rid} workbook={workbook.nominal_url}", flush=True)
 
-#         created[test_id] = (core_run, workbook)
-#     return created
+        created[test_id] = (core_run, workbook)
+    return created
 
 
 def close_runs(core_runs):
@@ -826,12 +521,7 @@ def main():
     print(f"[config] dataset_name={config['dataset_name']!r} drivers={config['drivers']} "
           f"tests={sorted(tests)}", flush=True)
 
-    # --- one shared InstroDAQ session for the whole process ----------------
-    # InstroDAQ.open() issues *RST, so this must happen exactly once, before
-    # any subsystem touches the instrument. Letting each subsystem create its
-    # own InstroDAQ the way the individual per-script versions did would
-    # *RST the instrument every time and wipe out whatever the others had
-    # just configured.
+
     daq = InstroDAQ(name="rack", driver=Keysight34980A(MAIN_RESOURCE))
     daq.open()
     inst = daq.driver._visa   # raw pyvisa handle, for the two classes that talk SCPI directly
@@ -851,20 +541,7 @@ def main():
     publisher = NominalCorePublisher(dataset_rid=dataset.rid)
     # core_runs = setup_runs_and_workbooks(core_client, dataset, tests, config["workbook_templates"])
 
-    # Debug visibility: announce the first time each subsystem tag actually
-    # streams data (every publish() call in this file passes
-    # tags={"subsystem": ...}, so this catches every DAQ/test's first real
-    # write to Core), and the first time each test id actually starts
-    # running. Both print exactly once per subsystem/test id per session --
-    # not a per-pass log, just "this one is live now."
-    seen_subsystems = set()
-
     def publish(channel_data: dict, tags: dict | None = None):
-        subsystem = (tags or {}).get("subsystem")
-        if subsystem and subsystem not in seen_subsystems:
-            seen_subsystems.add(subsystem)
-            print(f"[stream] {subsystem!r} is now streaming to Core", flush=True)
-
         ts = _now_ns()
         publisher.publish(
             Measurement(
@@ -874,31 +551,18 @@ def main():
             )
         )
 
-    started_tests = set()
-
-    def _announce_test_start(test_id):
-        if test_id not in started_tests:
-            started_tests.add(test_id)
-            print(f"[test] {test_id!r} starting", flush=True)
-
     try:
         # One-shot tests run once, before the main loop starts.
         for test_id, run in ONE_SHOT_TESTS.items():
             if test_id in tests:
-                _announce_test_start(test_id)
                 run(daq, inst, publish)
 
         # Continuous tests: no round-robin/generator scheduling -- every
-        # pass through the loop just calls each enabled test straight, one
-        # after the other, in CONTINUOUS_TESTS' order. Each test does its
-        # own one-time setup on its first call (see `state`, a dict shared
-        # across passes and tests).
         state = {}
         try:
             while True:
                 for test_id, run in CONTINUOUS_TESTS:
                     if test_id in tests:
-                        _announce_test_start(test_id)
                         run(daq, inst, publish, state)
                 time.sleep(POLL_S)
         finally:
