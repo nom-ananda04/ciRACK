@@ -736,7 +736,21 @@ def start_run(asset, dataset, test_id):
     until close_run() below stamps an end the moment this test's slot is
     over -- since tests are strictly sequential now, this run's start/end
     genuinely bound when this one test was executing, not the whole
-    session."""
+    session.
+
+    IMPORTANT (viewing this data): a workbook/chart built against the
+    persistent asset shows EVERY Run ever tied to that asset, across every
+    session this script has ever run -- confirmed on real hardware: a
+    channel like "di_2" showed up listed under both "CI RUN 4" (this
+    session) and "CI RUN 2" (an earlier one) in the same chart, overlaid
+    together, which looks like tests running in parallel even though each
+    individual session ran them strictly sequentially. That's an inherent
+    consequence of binding every Run to one constant asset (see
+    get_and_clean_asset's docstring for why that binding exists), not a
+    scheduling bug. To see just THIS test's own data with nothing else
+    overlaid, open the Run's own page directly (the printed nominal_url
+    below), not the asset-level/workbook aggregate view.
+    """
     if asset is None:
         return None
     run_start = datetime.now(timezone.utc)
@@ -746,7 +760,7 @@ def start_run(asset, dataset, test_id):
         end=None,
     )
     core_run.add_dataset(ref_name=test_id, dataset=dataset)
-    print(f"[run] {test_id}: run={core_run.rid}", flush=True)
+    print(f"[run] {test_id}: run={core_run.rid}  view just this run: {core_run.nominal_url}", flush=True)
     return core_run
 
 
@@ -797,15 +811,24 @@ def main():
     # subsystem tag actually streams data.
     seen_subsystems = set()
 
+    # Every channel name gets prefixed with "test_<test_id>." (e.g.
+    # "test_do_drive.do0") so it's obvious in Core which test a channel
+    # belongs to -- matches each test function's own name (test_do_drive,
+    # test_counter_totalize, etc.), which is exactly "test_" + test_id for
+    # all six. _current_test_id is updated right before each test starts
+    # (below) and read here since publish() is shared across every test.
+    _current_test_id = [None]
+
     def publish(channel_data: dict, tags: dict | None = None):
         subsystem = (tags or {}).get("subsystem")
         if subsystem and subsystem not in seen_subsystems:
             seen_subsystems.add(subsystem)
             print(f"[stream] {subsystem!r} is now streaming to Core", flush=True)
+        prefix = f"test_{_current_test_id[0]}." if _current_test_id[0] else ""
         ts = _now_ns()
         publisher.publish(
             Measurement(
-                channel_data={name: [float(v)] for name, v in channel_data.items()},
+                channel_data={f"{prefix}{name}": [float(v)] for name, v in channel_data.items()},
                 timestamps=[ts],
                 tags=tags,
             )
@@ -823,6 +846,7 @@ def main():
                 continue
 
             print(f"[test] {test_id!r} starting", flush=True)
+            _current_test_id[0] = test_id
             core_run = start_run(asset, dataset, test_id)
             try:
                 if kind == "one_shot":
