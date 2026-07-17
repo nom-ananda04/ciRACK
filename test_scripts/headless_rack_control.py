@@ -629,18 +629,31 @@ def setup_runs(client, dataset, tests, asset_rid):
     (asset.add_dataset), under the test id as its data_scope_name, and each
     Run is created via asset.create_run so it's tied to the same asset too.
 
+    Because the asset is persistent, a prior session already registered a
+    data scope under each test id, pointing at THAT session's (now stale)
+    dataset -- add_dataset()'s underlying API call 400s if you try to add a
+    data_scope_name that's already registered on the asset (confirmed from a
+    real "POST .../asset/{rid}/data-sources" 400 on the second run against
+    an already-populated asset). So any scope already present under a test
+    id gets removed first, then re-added pointing at this session's dataset.
+
     Each run is open-ended (end=None): it represents "this test session is
     still live," not a fixed historical window. close_runs() below sets the
     end timestamp on the way out.
     """
     asset = client.get_asset(asset_rid)
+    existing_scopes = {name for name, _scope_type in asset.list_data_scopes()}
 
     session_start = datetime.now(timezone.utc)
     created = {}
     for test_id in tests:
         # data_scope_name=test_id: lets data be resolved by scope/ref name
         # consistently, since the same test id keeps mapping to a brand new
-        # dataset every time this script runs again.
+        # dataset every time this script runs again -- see the docstring
+        # above for why a stale scope under that name has to be removed
+        # first rather than just re-added.
+        if test_id in existing_scopes:
+            asset.remove_data_scopes(names=[test_id])
         asset.add_dataset(data_scope_name=test_id, dataset=dataset)
 
         core_run = asset.create_run(
