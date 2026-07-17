@@ -169,40 +169,7 @@ def _with_retry(fn, *, attempts=3, delay_s=1.0, label=""):
                 time.sleep(delay_s)
     raise last_exc
 
-
-# ============================================================================
-# Tests -- one function per test id in ALL_TESTS. Named after the id rather
-# than "test1"/"test2" so they stay self-documenting and line up with the
-# config file's "tests" list, TEST_REQUIRED_DRIVER, etc.
-#
-# Strictly sequential, one test running at a time -- never interleaved:
-# main() runs each enabled test, in order (see ONE_SHOT_TESTS then
-# CONTINUOUS_TESTS below), all the way to completion before starting the
-# next one. do_drive (and any other one-shot test) completes on its own (4
-# toggles, then done). Each continuous test (di_raster_scan,
-# counter_totalize, multi_counter_clk, ain_ao_route, fgen_sweep) has no
-# natural end of its own -- it does its one-time setup on first call
-# (stashed in a `state` dict that's fresh for that test only) and then does
-# one poll/publish step per pass, same as always, but main() now runs that
-# loop for exactly DEFAULT_TEST_DURATION_S / config's test_duration_s
-# seconds for THIS test alone, tears it down immediately (teardown_tests(),
-# called right then, not once at the very end for every test), and only
-# then moves on to the next enabled test. fgen_sweep still self-paces its
-# own sweep-vs-pause cycle internally via a stashed "next sweep at"
-# timestamp (see its docstring) -- but that cycle now runs within its own
-# dedicated time slot, not interleaved with any other test.
-# ============================================================================
-
 # --- DI stimulus rig ---------------------------------------------------------
-# di_raster_scan only reads DI2-DI6 -- with nothing driving them, those
-# inputs just sit at whatever level they float to, so there's nothing real
-# to see in Core. Each DI bit is wired to its own external DAQ's output line
-# (confirmed from the wiring diagram, pins confirmed against real wiring):
-#     DI2 <- LabJack T8  CIO1   | DI3 <- LabJack T7  CIO1   | DI4 <- LabJack T4  CIO1
-#     DI5 <- NI USB-6421 DIO1   | DI6 <- NI cDAQ-9401 (cDAQ1Mod4) DIO1
-# T4/T7/T8 serials reused from MultiCounterControl.LABJACKS in
-# btop_test_suite.py -- same physical devices. NI's "DIO1" is expressed as
-# instro's required DevN/portM/lineP physical_channel string below.
 DI_STIMULUS_DEVICES = [
     # (di_alias, driver_family, device_id, physical_channel)
     ("di_2", "labjack", "480011030", "CIO1"),                       # T8        -> DI2
@@ -835,11 +802,7 @@ def main():
         )
 
     try:
-        # Strictly sequential: each enabled test, in TEST_RUN_ORDER, runs
-        # all the way to completion -- including its own teardown and its
-        # own Run being closed out -- before the next one starts. Nothing
-        # here interleaves; see the module-level "Tests" comment above for
-        # why this replaced the old "every enabled test gets a turn every
+
         # poll pass, forever" model.
         for test_id, kind in TEST_RUN_ORDER:
             if test_id not in tests:
