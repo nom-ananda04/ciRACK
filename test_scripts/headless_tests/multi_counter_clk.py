@@ -2,14 +2,18 @@
 on/off per ENABLE_CLK below -- there's no UI checkbox in headless mode, so
 edit this constant directly to change behavior.
 
-Also has all five counting DAQs -- T4/T7/T8, USB-6421, NI-9401 -- each
-independently count rising edges of that same CLK pulse train on their own
-DIO2/CIO2 line, proving the pulse train actually reaches each device (not
-just trusting the Keysight's own reported CLK state). Ported from the
-already-working reference implementation in btop_test_suite.py's
-MultiCounterControl (count_labjack/count_nidaqmx) -- the exact register
-names and NI source-terminal strings below are taken straight from there,
-not re-derived or guessed."""
+Also has hardware pulse counters -- T4, T7, USB-6421, NI-9401 -- each
+independently counting rising edges of that same CLK pulse train on their
+own DIO2/CIO2 line, proving the pulse train actually reaches each device
+(not just trusting the Keysight's own reported CLK state). T8 is currently
+EXCLUDED: LabJack's own datasheet confirms CIO2 (DIO18) can't do hardware
+edge-counting on the T8 with any DIO-EF feature (see LABJACK_COUNTER_DEVICES
+below) -- needs a rewire or a software-polling fallback if T8 counting is
+required. Loosely based on btop_test_suite.py's MultiCounterControl
+(count_labjack/count_nidaqmx), but the DIO-EF register index/name for the
+LabJack side was corrected after two real-hardware failures -- see the
+comment above LABJACK_COUNTER_DEVICES. NI source-terminal strings are still
+taken straight from the reference implementation, not re-derived."""
 
 from instro.daq import InstroDAQ
 from instro.daq.drivers.labjack import LabJackTSeriesDriver
@@ -25,33 +29,47 @@ KIND = "continuous"
 
 ENABLE_CLK = False   # MultiCounterControl CLK output
 
-# btop_test_suite.py's MultiCounterControl claims "CIO2 == DIO18 on
-# T4/T7/T8" and writes the DIO-EF registers as "DIO18_EF_...". Confirmed
-# WRONG on real hardware: writing DIO18_EF_ENABLE=1 raises LJM error 2553
-# EF_PIN_TYPE_MISMATCH (DIO18 doesn't resolve to the same pin/pin-type as
-# CIO2 for this purpose). Using the literal "CIO2_EF_..." name works
-# instead -- same alias that already works fine for plain digital I/O
-# elsewhere in this project (DI_STIMULUS_DEVICES/DO_LISTENER_DEVICES use
-# "CIO0"/"CIO1" directly), LJM just needed the alias form here too, not
-# the numbered DIO18 form the reference file assumed.
+# Two real-hardware failures, in order, both now explained by LabJack's own
+# DIO-EF datasheet (https://support.labjack.com/docs/13-2-dio-extended-features-t-series-datasheet):
 #
-# DIO_EF_INDEX=8 is the Interrupt Counter feature (counts rising edges) --
-# index 7 is a different feature ("High-Speed Counter") that needs extra
-# clock setup and isn't valid on every line; using 7 would silently arm the
-# wrong feature and never count. Register sequence: ENABLE=0 (can't change
-# index while enabled), INDEX=8, ENABLE=1, then read READ_A for the
-# accumulated count. instro has no counter abstraction (confirmed from
-# source) so this talks to the raw LJM handle directly via
-# InstroDAQ.driver._handle -- same "reach into the raw driver handle"
-# pattern the rest of this project already uses for the Keysight's raw
-# pyvisa handle (see headless_rack_control.py's `inst`).
-LJ_EF_LINE = "CIO2"
-LJ_EF_INDEX = 8
+# 1. btop_test_suite.py's MultiCounterControl (and this file's first attempt)
+#    used DIO18_EF_INDEX=8 (Interrupt Counter) -> LJM error 2553
+#    EF_PIN_TYPE_MISMATCH. Turns out index 8's capable-pin list is DIO4-9 on
+#    the T4, DIO0/1/2/3/6/7 on the T7, and DIO0-15 on the T8 -- DIO18 (CIO2)
+#    is not in ANY of those lists. Index 8 on CIO2 was never valid on this
+#    project's actual hardware, on any of the three models; the reference
+#    file's "CIO2 == DIO18, index 8" claim was simply never true.
+# 2. This file's second attempt switched to the literal alias "CIO2_EF_..."
+#    -> LJM error 1294 LJME_INVALID_NAME. DIO-EF registers are only ever
+#    named using the numbered "DIO#_EF_..." form -- "CIOx_EF_..." is not a
+#    recognized name at all (unlike plain digital I/O reads/writes, where
+#    "CIO0"/"CIO1" work fine elsewhere in this project, e.g.
+#    DI_STIMULUS_DEVICES/DO_LISTENER_DEVICES).
+#
+# The fix: use index 7 (High-Speed Counter) instead of 8, with the numbered
+# "DIO18" name. Per the same datasheet, DIO18/CIO2 IS in index 7's
+# capable-pin list for the T4 and T7 ("Always available" on T7; on T4 it's
+# shared with the async-serial feature, which nothing else in this project
+# currently uses, so it's free). The T8's index-7 capable list is DIO6, 7,
+# 8, 10, 13, 14, 15 -- DIO18 is not in it, and DIO18 is also out of range
+# for index 8 (0-15). So the T8 genuinely cannot hardware-count edges on
+# CIO2 with any DIO-EF feature; it's excluded from LABJACK_COUNTER_DEVICES
+# below pending a decision to either rewire its sense line to one of its
+# actual capable pins, or add a software-polling fallback (much less
+# accurate, tied to the 0.5s poll rate).
+#
+# Register sequence: ENABLE=0 (can't change index while enabled), INDEX=7,
+# ENABLE=1, then read READ_A for the accumulated count. instro has no
+# counter abstraction (confirmed from source) so this talks to the raw LJM
+# handle directly via InstroDAQ.driver._handle -- same "reach into the raw
+# driver handle" pattern the rest of this project already uses for the
+# Keysight's raw pyvisa handle (see headless_rack_control.py's `inst`).
+LJ_DIO = 18   # CIO2, same numbering on both T4 and T7
+LJ_EF_INDEX = 7
 LABJACK_COUNTER_DEVICES = [
-    # (device_key, device_id)
+    # (device_key, device_id) -- T8 excluded, see comment above.
     ("t4", "440020473"),
     ("t7", "470041016"),
-    ("t8", "480011030"),
 ]
 
 # (device_key, counter_channel, source_terminal) -- both confirmed working
@@ -79,9 +97,9 @@ def run(daq, inst, publish, state):
             counter_daq = InstroDAQ(name=f"counter_{device_key}", driver=LabJackTSeriesDriver(device_id=device_id))
             counter_daq.open()
             handle = counter_daq.driver._handle
-            ljm.eWriteName(handle, f"{LJ_EF_LINE}_EF_ENABLE", 0)
-            ljm.eWriteName(handle, f"{LJ_EF_LINE}_EF_INDEX", LJ_EF_INDEX)
-            ljm.eWriteName(handle, f"{LJ_EF_LINE}_EF_ENABLE", 1)
+            ljm.eWriteName(handle, f"DIO{LJ_DIO}_EF_ENABLE", 0)
+            ljm.eWriteName(handle, f"DIO{LJ_DIO}_EF_INDEX", LJ_EF_INDEX)
+            ljm.eWriteName(handle, f"DIO{LJ_DIO}_EF_ENABLE", 1)
             counter_daqs[device_key] = counter_daq
         state["counter_daqs"] = counter_daqs
 
@@ -106,7 +124,7 @@ def run(daq, inst, publish, state):
 
     for device_key, counter_daq in state["counter_daqs"].items():
         handle = counter_daq.driver._handle
-        count = ljm.eReadName(handle, f"{LJ_EF_LINE}_EF_READ_A")
+        count = ljm.eReadName(handle, f"DIO{LJ_DIO}_EF_READ_A")
         readings[f"{device_key}_pulse_count"] = float(count)
 
     for device_key, task in state["ni_tasks"].items():
@@ -121,7 +139,7 @@ def teardown(state, daq, inst):
     if "counter_daqs" in state:
         for counter_daq in state["counter_daqs"].values():
             try:
-                ljm.eWriteName(counter_daq.driver._handle, f"{LJ_EF_LINE}_EF_ENABLE", 0)
+                ljm.eWriteName(counter_daq.driver._handle, f"DIO{LJ_DIO}_EF_ENABLE", 0)
             except Exception:
                 pass
             try:
