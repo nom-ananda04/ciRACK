@@ -25,25 +25,27 @@ KIND = "continuous"
 
 ENABLE_CLK = False   # MultiCounterControl CLK output
 
-# CIO2 == DIO18 on T4/T7/T8 (confirmed in btop_test_suite.py's
-# MultiCounterControl.LJ_DIO) -- LJM's DIO-EF (extended feature) registers
-# need the literal DIO number; "CIO2_EF_INDEX" is NOT a valid register name
-# even though plain "CIO2" works fine as a pin alias elsewhere in this
-# project for simple digital I/O. This is a real, already-hit bug (see
-# btop_test_suite.py's own comment): an earlier version used "CIO2_EF_..."
-# directly and it silently never counted anything.
+# btop_test_suite.py's MultiCounterControl claims "CIO2 == DIO18 on
+# T4/T7/T8" and writes the DIO-EF registers as "DIO18_EF_...". Confirmed
+# WRONG on real hardware: writing DIO18_EF_ENABLE=1 raises LJM error 2553
+# EF_PIN_TYPE_MISMATCH (DIO18 doesn't resolve to the same pin/pin-type as
+# CIO2 for this purpose). Using the literal "CIO2_EF_..." name works
+# instead -- same alias that already works fine for plain digital I/O
+# elsewhere in this project (DI_STIMULUS_DEVICES/DO_LISTENER_DEVICES use
+# "CIO0"/"CIO1" directly), LJM just needed the alias form here too, not
+# the numbered DIO18 form the reference file assumed.
 #
 # DIO_EF_INDEX=8 is the Interrupt Counter feature (counts rising edges) --
 # index 7 is a different feature ("High-Speed Counter") that needs extra
 # clock setup and isn't valid on every line; using 7 would silently arm the
-# wrong feature and never count (also already hit once, per the same
-# comment). Register sequence: ENABLE=0 (can't change index while enabled),
-# INDEX=8, ENABLE=1, then read READ_A for the accumulated count. instro has
-# no counter abstraction (confirmed from source) so this talks to the raw
-# LJM handle directly via InstroDAQ.driver._handle -- same "reach into the
-# raw driver handle" pattern the rest of this project already uses for the
-# Keysight's raw pyvisa handle (see headless_rack_control.py's `inst`).
-LJ_DIO = 18
+# wrong feature and never count. Register sequence: ENABLE=0 (can't change
+# index while enabled), INDEX=8, ENABLE=1, then read READ_A for the
+# accumulated count. instro has no counter abstraction (confirmed from
+# source) so this talks to the raw LJM handle directly via
+# InstroDAQ.driver._handle -- same "reach into the raw driver handle"
+# pattern the rest of this project already uses for the Keysight's raw
+# pyvisa handle (see headless_rack_control.py's `inst`).
+LJ_EF_LINE = "CIO2"
 LJ_EF_INDEX = 8
 LABJACK_COUNTER_DEVICES = [
     # (device_key, device_id)
@@ -71,15 +73,15 @@ def run(daq, inst, publish, state):
         state["multi_counter"] = multi_counter
 
         # LabJack counters: one InstroDAQ session per device, each with a
-        # hardware edge-counter enabled on DIO18 (CIO2).
+        # hardware edge-counter enabled on CIO2.
         counter_daqs = {}
         for device_key, device_id in LABJACK_COUNTER_DEVICES:
             counter_daq = InstroDAQ(name=f"counter_{device_key}", driver=LabJackTSeriesDriver(device_id=device_id))
             counter_daq.open()
             handle = counter_daq.driver._handle
-            ljm.eWriteName(handle, f"DIO{LJ_DIO}_EF_ENABLE", 0)
-            ljm.eWriteName(handle, f"DIO{LJ_DIO}_EF_INDEX", LJ_EF_INDEX)
-            ljm.eWriteName(handle, f"DIO{LJ_DIO}_EF_ENABLE", 1)
+            ljm.eWriteName(handle, f"{LJ_EF_LINE}_EF_ENABLE", 0)
+            ljm.eWriteName(handle, f"{LJ_EF_LINE}_EF_INDEX", LJ_EF_INDEX)
+            ljm.eWriteName(handle, f"{LJ_EF_LINE}_EF_ENABLE", 1)
             counter_daqs[device_key] = counter_daq
         state["counter_daqs"] = counter_daqs
 
@@ -104,7 +106,7 @@ def run(daq, inst, publish, state):
 
     for device_key, counter_daq in state["counter_daqs"].items():
         handle = counter_daq.driver._handle
-        count = ljm.eReadName(handle, f"DIO{LJ_DIO}_EF_READ_A")
+        count = ljm.eReadName(handle, f"{LJ_EF_LINE}_EF_READ_A")
         readings[f"{device_key}_pulse_count"] = float(count)
 
     for device_key, task in state["ni_tasks"].items():
@@ -119,7 +121,7 @@ def teardown(state, daq, inst):
     if "counter_daqs" in state:
         for counter_daq in state["counter_daqs"].values():
             try:
-                ljm.eWriteName(counter_daq.driver._handle, f"DIO{LJ_DIO}_EF_ENABLE", 0)
+                ljm.eWriteName(counter_daq.driver._handle, f"{LJ_EF_LINE}_EF_ENABLE", 0)
             except Exception:
                 pass
             try:
