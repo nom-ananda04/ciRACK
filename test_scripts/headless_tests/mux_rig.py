@@ -27,23 +27,26 @@ MUX_PORT_SEQUENCE = [
     ("ni9263",  "ni",      "cDAQ1Mod1", "ni9263_ao0",     None,       5),
 ]
 
-# Read and publish AIN1 on ALL SIX of these every pass, regardless of which
-# port is currently routed -- only the currently-routed device's reading
-# should track the driven signal; the other five are on a disconnected mux
-# bus and read whatever's floating there. T4/T7/T8/USB-6421 use a NEW
-# alias/channel here: their AIN0/ai0 is already used by that test's own
-# self-loop rig, under an alias literally named "..._ain1" for historical
-# reasons -- so this uses a distinct "_mux_ain1" alias to avoid colliding
-# with that. NI9204/NI9207 have no self-loop of their own -- confirmed
-# wiring: the switch's output lands on their Analog Input 0 (ai0) -- so
-# their mux-sense channel is configured entirely from this table.
+# Confirmed wiring (corrected): each mux port's signal lands on TWO sense
+# pins on the target device, not one -- AIN2+AIN3 on the LabJacks (T4/T7/
+# T8), AI1+AI2 on the NI daqs (USB-6421, NI9207, NI9204). Read and publish
+# BOTH channels on ALL SIX of these every pass, regardless of which port is
+# currently routed -- only the currently-routed device's readings should
+# track the driven signal; the other five are on a disconnected mux bus and
+# read whatever's floating there. T4/T7/T8/USB-6421 use distinct
+# "..._mux_ainX"/"..._mux_aiX" aliases here so they don't collide with their
+# own self-loop rig's AIN0/ai0 channel (configured separately, under a
+# "..._ain1" alias, in that test's own analog-device list). NI9204/NI9207
+# have no self-loop of their own -- their mux-sense channels are configured
+# entirely from this table.
 #
-# (device_key, driver_family, device_id, mux_ain1_alias, mux_ain1_physical_channel)
+# (device_key, driver_family, device_id,
+#  ain_a_alias, ain_a_physical_channel, ain_b_alias, ain_b_physical_channel)
 MUX_SENSE_DEVICES = [
-    ("t4",      "labjack", "440020473", "t4_mux_ain1",      "AIN1"),
-    ("t7",      "labjack", "470041016", "t7_mux_ain1",      "AIN1"),
-    ("t8",      "labjack", "480011030", "t8_mux_ain1",      "AIN1"),
-    ("usb6421", "ni",      "Dev1",      "usb6421_mux_ain1", "Dev1/ai1"),
-    ("ni9207",  "ni",      "cDAQ1Mod3", "ni9207_ain1",      "cDAQ1Mod3/ai0"),
-    ("ni9204",  "ni",      "cDAQ1Mod2", "ni9204_ain1",      "cDAQ1Mod2/ai0"),
+    ("t4",      "labjack", "440020473", "t4_mux_ain2",     "AIN2",          "t4_mux_ain3",     "AIN3"),
+    ("t7",      "labjack", "470041016", "t7_mux_ain2",     "AIN2",          "t7_mux_ain3",     "AIN3"),
+    ("t8",      "labjack", "480011030", "t8_mux_ain2",     "AIN2",          "t8_mux_ain3",     "AIN3"),
+    ("usb6421", "ni",      "Dev1",      "usb6421_mux_ai1", "Dev1/ai1",      "usb6421_mux_ai2", "Dev1/ai2"),
+    ("ni9207",  "ni",      "cDAQ1Mod3", "ni9207_mux_ai1",  "cDAQ1Mod3/ai1", "ni9207_mux_ai2",  "cDAQ1Mod3/ai2"),
+    ("ni9204",  "ni",      "cDAQ1Mod2", "ni9204_mux_ai1",  "cDAQ1Mod2/ai1", "ni9204_mux_ai2",  "cDAQ1Mod2/ai2"),
 ]

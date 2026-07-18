@@ -1,9 +1,10 @@
 """ain_ao_route: round-robins the Keysight SW_AO_MUX switch through all 5
 ports (see mux_rig.py), driving whichever port is currently active with a
-constant AIN_AO_CONST_VOLTAGE and reading AIN1 on all six MUX_SENSE_DEVICES
-every pass. This is the mux-DEPENDENT signal path only -- see
-ain_ao_loopback.py for the separate, always-on DAC1->AIN0 self-loop test
-that has nothing to do with the switch."""
+constant AIN_AO_CONST_VOLTAGE and reading BOTH of the two sense pins the
+switch lands on (AIN2+AIN3 on LabJacks, AI1+AI2 on NI daqs) on all six
+MUX_SENSE_DEVICES every pass. This is the mux-DEPENDENT signal path only --
+see ain_ao_loopback.py for the separate, always-on DAC1->AIN0 self-loop
+test that has nothing to do with the switch."""
 
 from instro.daq import InstroDAQ
 from instro.daq.drivers.labjack import LabJackTSeriesDriver
@@ -64,7 +65,7 @@ def run(daq, inst, publish, state):
         # NI9204/NI9207 only ever sense via the mux and never drive, so
         # they're not in MUX_PORT_SEQUENCE above -- open a session for each
         # of them here too.
-        for device_key, driver_family, device_id, mux_ain1_alias, mux_ain1_phys in MUX_SENSE_DEVICES:
+        for device_key, driver_family, device_id, _a_alias, _a_phys, _b_alias, _b_phys in MUX_SENSE_DEVICES:
             if device_key in analog_daqs:
                 continue   # t4/t7/t8/usb6421/ni9263 -- session already opened above
             if driver_family == "ni":
@@ -74,12 +75,15 @@ def run(daq, inst, publish, state):
             analog_daq.open()
             analog_daqs[device_key] = analog_daq
 
-        # Every MUX_SENSE_DEVICES device needs its ain1 channel configured,
-        # whether its session was just opened above (ni9204/ni9207) or
-        # already exists from the drive loop (t4/t7/t8/usb6421).
-        for device_key, _drv, _devid, mux_ain1_alias, mux_ain1_phys in MUX_SENSE_DEVICES:
+        # Every MUX_SENSE_DEVICES device needs BOTH its sense channels
+        # configured (see mux_rig.py: each mux port lands on two pins, not
+        # one), whether its session was just opened above (ni9204/ni9207)
+        # or already exists from the drive loop (t4/t7/t8/usb6421).
+        for device_key, _drv, _devid, ain_a_alias, ain_a_phys, ain_b_alias, ain_b_phys in MUX_SENSE_DEVICES:
             analog_daqs[device_key].configure_analog_channel(
-                direction=Direction.INPUT, physical_channel=mux_ain1_phys, alias=mux_ain1_alias)
+                direction=Direction.INPUT, physical_channel=ain_a_phys, alias=ain_a_alias)
+            analog_daqs[device_key].configure_analog_channel(
+                direction=Direction.INPUT, physical_channel=ain_b_phys, alias=ain_b_alias)
 
         state["analog_daqs"] = analog_daqs
         state["mux_port_index"] = 0
@@ -102,17 +106,22 @@ def run(daq, inst, publish, state):
               f"[{'OK' if ok else 'FAIL'}]", flush=True)
         state["mux_routed_port"] = active_port
 
-    # Read AIN1 on all six MUX_SENSE_DEVICES every pass, regardless of
-    # which port is routed -- only the currently-routed device's reading
-    # should track the constant voltage; the rest are on a disconnected bus.
+    # Read both sense channels on all six MUX_SENSE_DEVICES every pass,
+    # regardless of which port is routed -- only the currently-routed
+    # device's readings should track the constant voltage; the rest are on
+    # a disconnected bus. One read_analog() call per device covers both of
+    # its configured channels; pull each alias's value out of the same
+    # returned channel_data rather than reading twice.
     mux_readings = {"mux_active_port": float(active_port)}
-    for device_key, _drv, _devid, mux_ain1_alias, _phys in MUX_SENSE_DEVICES:
+    for device_key, _drv, _devid, ain_a_alias, _a_phys, ain_b_alias, _b_phys in MUX_SENSE_DEVICES:
         analog_daq = analog_daqs[device_key]
         measurement = analog_daq.read_analog()
         if isinstance(measurement, list):
             measurement = measurement[0]
-        mux_readings[mux_ain1_alias] = float(
-            measurement.channel_data[f"{analog_daq.name}.{mux_ain1_alias}"][-1])
+        mux_readings[ain_a_alias] = float(
+            measurement.channel_data[f"{analog_daq.name}.{ain_a_alias}"][-1])
+        mux_readings[ain_b_alias] = float(
+            measurement.channel_data[f"{analog_daq.name}.{ain_b_alias}"][-1])
     publish(mux_readings, tags={"subsystem": "ain_ao_mux_route"})
 
     state["mux_pass_count"] += 1

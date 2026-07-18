@@ -1,10 +1,11 @@
 """fgen_sweep: drives a 1 Hz sine on T4/T7/T8/USB-6421's self-loop
 (DAC1->AIN0, always on) AND round-robins the Keysight SW_AO_MUX switch
 through all 5 ports (see mux_rig.py), driving whichever port is currently
-active with the same sine and reading AIN1 on all six MUX_SENSE_DEVICES
-every pass -- while ALSO running FGEN_DIFFControl's own DAC x port sweep.
-See run()'s docstring for the tradeoffs of this file's no-threading
-design."""
+active with the same sine via its DAC0 output and reading BOTH of the two
+sense pins the switch lands on (AIN2+AIN3 on LabJacks, AI1+AI2 on NI daqs)
+on all six MUX_SENSE_DEVICES every pass -- while ALSO running
+FGEN_DIFFControl's own DAC x port sweep. See run()'s docstring for the
+tradeoffs of this file's no-threading design."""
 
 import math
 import time
@@ -145,10 +146,13 @@ def run(daq, inst, publish, state):
             if mux_ao_phys is not None:
                 fgen_analog_daqs[device_key].configure_analog_channel(
                     direction=Direction.OUTPUT, physical_channel=mux_ao_phys, alias=mux_ao_alias)
-        for device_key, _drv, _devid, mux_ain1_alias, mux_ain1_phys in MUX_SENSE_DEVICES:
-            if mux_ain1_phys is not None:
-                fgen_analog_daqs[device_key].configure_analog_channel(
-                    direction=Direction.INPUT, physical_channel=mux_ain1_phys, alias=mux_ain1_alias)
+        # Each mux port lands on two sense pins per device (see mux_rig.py:
+        # AIN2+AIN3 on LabJacks, AI1+AI2 on NI daqs) -- configure both.
+        for device_key, _drv, _devid, ain_a_alias, ain_a_phys, ain_b_alias, ain_b_phys in MUX_SENSE_DEVICES:
+            fgen_analog_daqs[device_key].configure_analog_channel(
+                direction=Direction.INPUT, physical_channel=ain_a_phys, alias=ain_a_alias)
+            fgen_analog_daqs[device_key].configure_analog_channel(
+                direction=Direction.INPUT, physical_channel=ain_b_phys, alias=ain_b_alias)
 
         mux_tray = AIN_AOControl()
         mux_tray._assert_34980a(daq)
@@ -212,15 +216,16 @@ def run(daq, inst, publish, state):
                 measurement.channel_data[f"{analog_daq.name}.{device_key}_ain1"][-1])
         publish(readings, tags={"subsystem": "fgen_diff_analog"})
 
-        # Mux sense: read AIN1 on all six MUX_SENSE_DEVICES every pass,
-        # regardless of which port is routed -- only the currently-routed
-        # device's reading should track the sine; the rest are on a
-        # disconnected bus. T4/T7/T8/USB-6421 were already read above (they
-        # share a session with the self-loop rig, cached in read_cache);
-        # NI9204/NI9207 have no self-loop channel at all, so they haven't
-        # been read yet this pass -- read them fresh here.
+        # Mux sense: read both sense channels (see mux_rig.py: AIN2+AIN3 on
+        # LabJacks, AI1+AI2 on NI daqs) on all six MUX_SENSE_DEVICES every
+        # pass, regardless of which port is routed -- only the
+        # currently-routed device's readings should track the sine; the
+        # rest are on a disconnected bus. T4/T7/T8/USB-6421 were already
+        # read above (they share a session with the self-loop rig, cached
+        # in read_cache); NI9204/NI9207 have no self-loop channel at all,
+        # so they haven't been read yet this pass -- read them fresh here.
         mux_readings = {"mux_active_port": float(active_port)}
-        for device_key, _drv, _devid, mux_ain1_alias, _phys in MUX_SENSE_DEVICES:
+        for device_key, _drv, _devid, ain_a_alias, _a_phys, ain_b_alias, _b_phys in MUX_SENSE_DEVICES:
             analog_daq = fgen_analog_daqs[device_key]
             channel_data = read_cache.get(device_key)
             if channel_data is None:
@@ -229,7 +234,8 @@ def run(daq, inst, publish, state):
                     measurement = measurement[0]
                 channel_data = measurement.channel_data
                 read_cache[device_key] = channel_data
-            mux_readings[mux_ain1_alias] = float(channel_data[f"{analog_daq.name}.{mux_ain1_alias}"][-1])
+            mux_readings[ain_a_alias] = float(channel_data[f"{analog_daq.name}.{ain_a_alias}"][-1])
+            mux_readings[ain_b_alias] = float(channel_data[f"{analog_daq.name}.{ain_b_alias}"][-1])
         publish(mux_readings, tags={"subsystem": "fgen_mux_route"})
 
         time.sleep(step_s)
