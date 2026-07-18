@@ -1,10 +1,18 @@
 """ain_ao_route: round-robins the Keysight SW_AO_MUX switch through all 5
 ports (see mux_rig.py), driving whichever port is currently active with a
-constant AIN_AO_CONST_VOLTAGE and reading BOTH of the two sense pins the
-switch lands on (AIN2+AIN3 on LabJacks, AI1+AI2 on NI daqs) on all six
-MUX_SENSE_DEVICES every pass. This is the mux-DEPENDENT signal path only --
-see ain_ao_loopback.py for the separate, always-on DAC1->AIN0 self-loop
-test that has nothing to do with the switch."""
+sine (AIN_AO_SINE_*) via its DAC0 output and reading BOTH of the two sense
+pins the switch lands on (AIN2+AIN3 on LabJacks, AI1+AI2 on NI daqs) on all
+six MUX_SENSE_DEVICES every pass. This is the mux-DEPENDENT signal path
+only -- see ain_ao_loopback.py for the separate, always-on DAC1->AIN0
+self-loop test that has nothing to do with the switch.
+
+instro has no hardware-timed/buffered analog output for either LabJack or
+NI-DAQmx (confirmed from source, see fgen_sweep.py) -- write_analog_value()
+is a single immediate write. Rather than run a fast inner burst loop (like
+fgen_sweep.py does for its 1Hz sine), this just writes one sample per call
+at the outer loop's own POLL_S=0.5s cadence -- kept simple by using a slow
+enough frequency (AIN_AO_SINE_FREQ_HZ) that one sample every 0.5s still
+traces a smooth-looking sine instead of a stair-stepped one."""
 
 from instro.daq import InstroDAQ
 from instro.daq.drivers.labjack import LabJackTSeriesDriver
@@ -15,11 +23,16 @@ from btop_test_suite import AIN_AOControl
 
 from headless_tests.mux_rig import MUX_PORT_SEQUENCE, MUX_SENSE_DEVICES
 
+import math
+import time
+
 TEST_ID = "ain_ao_route"
 REQUIRED_DRIVER = "keysight_34980a"
 KIND = "continuous"
 
-AIN_AO_CONST_VOLTAGE = 1.0
+AIN_AO_SINE_FREQ_HZ = 0.05   # 20s period -- ~40 samples/cycle at POLL_S=0.5s
+AIN_AO_SINE_AMPLITUDE_V = 1.0
+AIN_AO_SINE_OFFSET_V = 1.0
 
 # ni9263 has no self-loop of its own, so MUX_PORT_SEQUENCE (shared with
 # fgen_sweep.py) leaves its physical channel as None there, meaning "reuse
@@ -59,7 +72,6 @@ def run(daq, inst, publish, state):
             phys = mux_ao_phys if mux_ao_phys is not None else _NI9263_MUX_AO_PHYS
             analog_daq.configure_analog_channel(direction=Direction.OUTPUT, physical_channel=phys,
                                                  alias=mux_ao_alias)
-            analog_daq.write_analog_value(channel=mux_ao_alias, value=AIN_AO_CONST_VOLTAGE)
             analog_daqs[device_key] = analog_daq
 
         # NI9204/NI9207 only ever sense via the mux and never drive, so
@@ -89,6 +101,7 @@ def run(daq, inst, publish, state):
         state["mux_port_index"] = 0
         state["mux_pass_count"] = 0
         state["mux_routed_port"] = None
+        state["sine_start"] = time.monotonic()
 
     tray = state["ain_ao"]
     analog_daqs = state["analog_daqs"]
@@ -106,13 +119,25 @@ def run(daq, inst, publish, state):
               f"[{'OK' if ok else 'FAIL'}]", flush=True)
         state["mux_routed_port"] = active_port
 
+    elapsed = time.monotonic() - state["sine_start"]
+    sine_value = AIN_AO_SINE_OFFSET_V + AIN_AO_SINE_AMPLITUDE_V * math.sin(
+        2 * math.pi * AIN_AO_SINE_FREQ_HZ * elapsed
+    )
+
+    # Drive every mux-ao channel with the same sine every pass -- same "set
+    # continuously, regardless of which port is routed" semantic the old
+    # constant-voltage version used (it wrote once at setup for all 5
+    # devices; this just keeps updating that same value).
+    for device_key, _drv, _devid, mux_ao_alias, _phys, _port in MUX_PORT_SEQUENCE:
+        analog_daqs[device_key].write_analog_value(channel=mux_ao_alias, value=sine_value)
+
     # Read both sense channels on all six MUX_SENSE_DEVICES every pass,
     # regardless of which port is routed -- only the currently-routed
-    # device's readings should track the constant voltage; the rest are on
-    # a disconnected bus. One read_analog() call per device covers both of
+    # device's readings should track the sine; the rest are on a
+    # disconnected bus. One read_analog() call per device covers both of
     # its configured channels; pull each alias's value out of the same
     # returned channel_data rather than reading twice.
-    mux_readings = {"mux_active_port": float(active_port)}
+    mux_readings = {"mux_active_port": float(active_port), "ain_ao_route_sine_cmd": sine_value}
     for device_key, _drv, _devid, ain_a_alias, _a_phys, ain_b_alias, _b_phys in MUX_SENSE_DEVICES:
         analog_daq = analog_daqs[device_key]
         measurement = analog_daq.read_analog()
