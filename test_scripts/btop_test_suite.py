@@ -463,20 +463,30 @@ class Counter34980aControl():
     MODULE_SLOT = 8
     COUNTER_CHANNEL = f"{MODULE_SLOT}301"  # counter 1; use f"{MODULE_SLOT}302" for counter 2
 
-    # Fixed input threshold, in volts. Per LabJack's own T-series datasheet
-    # (Appendix A-2), CIO/EIO output impedance is 180 ohms (a fairly weak
-    # driver) and their own worked example shows a 180 ohm load pulling the
-    # output HIGH down to ~1.65V (vs. 3.3V unloaded) -- Output High Voltage
-    # is only guaranteed down to 2.6V typical at 5mA and drops further under
-    # heavier loading. Output LOW stays low regardless (0.01-0.75V across
-    # the sinking range in that same table). NI's counter/PFI driver doesn't
-    # sag like this under the same load, which is the real reason 5V TTL
-    # (NI) clears a threshold that 3.3V CMOS (LabJack) may not -- it's a
-    # drive-strength/loading difference, not just a nominal voltage one.
-    # Dropped from 1.5V to 1.0V for more margin above LOW's worst case
-    # (0.75V) while staying safely below even a badly-drooped HIGH like the
-    # 1.65V worked example above.
-    THRESHOLD_V = 1.0
+    # Fixed input threshold, in volts.
+    #
+    # STOPGAP -- masks a known grounding fault, revisit once it's fixed.
+    # Measured on real hardware (USB-6421 driving this counter input):
+    # LOW = 0.86V, HIGH = 2.4V. A digital low sitting ~0.9V above ground
+    # indicates a ground-reference offset between the USB-6421's D GND and
+    # this counter input's reference terminal (T7's low reads near 0V on
+    # the same input, so the offset is specific to the USB-6421 wiring).
+    # With the previous 1.0V threshold, the driven-low level sat only
+    # ~140mV below threshold, and ripple/noise chattered across it at
+    # ~350 counts/s whenever the line was held low. 1.7V is the midpoint
+    # of the observed 0.86-2.4V swing (~750mV margin each side), which
+    # stops chatter while the line is actively driven.
+    #
+    # Known limits of this stopgap:
+    # - Does NOT stop chatter when nothing drives the line (NI outputs
+    #   tri-state when their task is released; a floating input can
+    #   oscillate across any threshold -- observed at both 1.0V and 1.5V).
+    #   Keep the driving task open and writing an explicit level.
+    # - The real fix is a ground wire from the USB-6421's D GND to the
+    #   counter input's reference; after that, low returns to ~0V and this
+    #   should go back to 1.0V (original value, comfortably above a real
+    #   low's worst case ~0.75V per LabJack's datasheet loading tables).
+    THRESHOLD_V = 1.7
     POLL_S = 0.5
 
     log = _log
