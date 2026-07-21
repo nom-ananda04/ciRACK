@@ -602,15 +602,22 @@ class MultiCounterControl():
     CB_CDAQ = "count_cdaq"
 
     # --- LabJack config ---------------------------------------------------------
-    # CIO2 == DIO18 on T4/T7/T8. DIO-EF index 8 = Interrupt Counter (rising-edge
-    # counter). Index 7 is "High-Speed Counter", a different DIO-EF feature that
-    # needs extra clock-source/config setup and isn't valid on every DIO line --
-    # using 7 here was silently arming the wrong feature, so LabJacks never
-    # counted anything. See LabJack's DIO-EF table:
+    # CIO2 == DIO18 on T4/T7/T8. Index 8 ("Interrupt Counter") is NOT valid on
+    # DIO18 for any of these models -- its capable-pin list is DIO4-9 (T4),
+    # DIO0/1/2/3/6/7 (T7), DIO0-15 (T8). Using it here caused LJM error 2553
+    # EF_PIN_TYPE_MISMATCH on the T4 (and would fail the same way on T7/T8).
+    # Index 7 ("High-Speed Counter") is the correct feature for DIO18/CIO2: it
+    # needs no clock-source setup, and DIO18 IS in its capable-pin list for the
+    # T4 (shared with async-serial, unused here) and T7 ("always available").
+    # NOTE: the T8's index-7 capable list is DIO6/7/8/10/13/14/15 -- DIO18 is
+    # not in it either, so the T8 genuinely cannot hardware-count on CIO2 with
+    # any DIO-EF feature; it needs a rewire to one of its capable pins (or a
+    # software-polling fallback) before CB_T8 will work here.
+    # See LabJack's DIO-EF table:
     # https://support.labjack.com/docs/13-2-dio-extended-features-t-series-datasheet
     # and https://support.labjack.com/docs/configuring-reading-a-counter
     LJ_DIO = 18
-    LJ_EF_INDEX = 8
+    LJ_EF_INDEX = 7
     LABJACKS = {
         CB_T4: ("T4", "440020473"),
         CB_T7: ("T7", "470041016"),
