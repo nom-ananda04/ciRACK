@@ -603,53 +603,7 @@ class Counter34980aControl():
             self.log.info(f"unexpected totalizer response: {resp!r}")
             return None
 
-    def read_count_debounced(self, inst):
-        """Logical, debounced count: advances by exactly 1 per real toggle,
-        collapsing any chatter/ringing burst the hardware counted along the
-        way. Requires configure() to have been called first (sets up
-        _raw_baseline/_debounced_count).
-
-        Blocks for up to DEBOUNCE_SETTLE_READS * DEBOUNCE_POLL_S while the
-        raw count is actively changing -- fine at the toggle cadence this
-        counter is used at (seconds between toggles), not meant for
-        high-rate signals. If the raw count never stops moving within
-        DEBOUNCE_MAX_WAIT_S (e.g. a floating line chattering continuously,
-        per the known limits on THRESHOLD_V above), gives up and returns the
-        last accepted logical count rather than blocking forever -- that
-        state means the signal isn't valid yet, not that a toggle happened.
-        """
-        settled = None
-        consecutive = 0
-        deadline = time.monotonic() + self.DEBOUNCE_MAX_WAIT_S
-        while consecutive < self.DEBOUNCE_SETTLE_READS:
-            if time.monotonic() > deadline:
-                self.log.info(
-                    f"read_count_debounced: raw count never settled within "
-                    f"{self.DEBOUNCE_MAX_WAIT_S}s (line likely floating/chattering) -- "
-                    f"returning last logical count {self._debounced_count} without advancing."
-                )
-                return self._debounced_count
-            raw = self.read_count(inst)
-            if raw is None:
-                time.sleep(self.DEBOUNCE_POLL_S)
-                continue
-            if raw == settled:
-                consecutive += 1
-            else:
-                settled = raw
-                consecutive = 1
-            time.sleep(self.DEBOUNCE_POLL_S)
-
-        if settled != self._raw_baseline:
-            self._debounced_count += 1
-            self.log.info(
-                f"debounced toggle detected: raw {self._raw_baseline} -> {settled} "
-                f"(collapsed to +1, logical count = {self._debounced_count})"
-            )
-            self._raw_baseline = settled
-
-        return self._debounced_count
-
+    
 
 class MultiCounterControl():
     POLL_S = 0.5
