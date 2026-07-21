@@ -533,19 +533,45 @@ class Counter34980aControl():
         inst.write(f"COUN:SLOP POS,(@{self.COUNTER_CHANNEL})")
         self.check_err(inst, "after COUN:SLOP")
 
+        # Read the slope back rather than trusting the write -- same reasoning
+        # as the threshold readback below: a clean SYST:ERR? doesn't prove the
+        # instrument actually landed on POS.
+        slop_readback = self.safe_query(inst, f"COUN:SLOP? (@{self.COUNTER_CHANNEL})")
+        if "POS" in slop_readback.upper():
+            self.log.info(f"Slope readback confirmed: {slop_readback!r} (rising edge) on channel {self.COUNTER_CHANNEL}.")
+        else:
+            self.log.error(
+                f"Slope readback mismatch: asked for POS (rising edge), instrument reports "
+                f"{slop_readback!r} on channel {self.COUNTER_CHANNEL}. The counter is NOT set to "
+                f"rising-edge-only."
+            )
+
         # Gate source: INTernal so the counter free-runs after INITiate rather
         # than requiring an external gate edge. Param is {INTernal|EXTernal}
         # (NOT IMM). [SENSe:]COUNter:GATE:SOURce
         inst.write(f"COUN:GATE:SOUR INT,(@{self.COUNTER_CHANNEL})")
         self.check_err(inst, "after COUN:GATE:SOUR INT")
 
-        # Gate polarity: INVerted so a LOW/floating external gate ENABLES
-        # counting. The GATE H terminal is unwired; if the gate still applies
-        # in totalize mode, NORMal polarity (count-while-high) would block all
-        # counting -- exactly a permanent count=0. {NORMal|INVerted}
-        # If you later tie GATE H physically high, switch this back to NORM.
-        inst.write(f"COUN:GATE:POL INV,(@{self.COUNTER_CHANNEL})")
-        self.check_err(inst, "after COUN:GATE:POL INV")
+        # GATE:POL is no longer written here (the INVerted workaround was
+        # removed), but it's PERSISTENT instrument state -- like the CLK
+        # output that stayed on across script runs -- so not writing it does
+        # NOT reset it. If a previous run ever set it to INVerted, it will
+        # stay INVerted until something explicitly writes NORMal or the
+        # instrument is power-cycled. Read it back and fail loudly rather
+        # than silently counting on the wrong half of the waveform again.
+        gate_pol_readback = self.safe_query(inst, f"COUN:GATE:POL? (@{self.COUNTER_CHANNEL})")
+        if "NORM" in gate_pol_readback.upper():
+            self.log.info(f"Gate polarity readback confirmed: {gate_pol_readback!r} on channel {self.COUNTER_CHANNEL}.")
+        elif "INV" in gate_pol_readback.upper():
+            self.log.error(
+                f"Gate polarity is still INVerted on channel {self.COUNTER_CHANNEL} (leftover from a "
+                f"previous run -- this script no longer writes GATE:POL, but the instrument doesn't "
+                f"reset it on its own). This means the totalizer is STILL only counting while the "
+                f"driven line is LOW, not on the rising edge. Clear it once with: "
+                f"inst.write('COUN:GATE:POL NORM,(@{self.COUNTER_CHANNEL})')."
+            )
+        else:
+            self.log.info(f"unexpected COUN:GATE:POL? response: {gate_pol_readback!r}")
 
         # Read without resetting the count (monotonic). {READ|RRESet}
         inst.write(f"COUN:TOT:TYPE READ,(@{self.COUNTER_CHANNEL})")
