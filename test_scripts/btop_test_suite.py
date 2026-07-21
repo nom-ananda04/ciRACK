@@ -489,6 +489,21 @@ class Counter34980aControl():
     THRESHOLD_V = 1.7
     POLL_S = 0.5
 
+    # Software debounce for the chatter described above. The 34950A counter
+    # has no on-board hysteresis/debounce SCPI command -- COUN:THR:VOLT is
+    # the only edge-detect control there is -- so a noisy transition can
+    # register as a burst of raw hardware counts instead of one. Rather than
+    # trusting the raw totalizer value directly, read_count_debounced() waits
+    # for the raw count to stop moving (DEBOUNCE_SETTLE_READS identical reads
+    # DEBOUNCE_POLL_S apart) and then advances the logical count by exactly 1
+    # per settled change, no matter how many raw edges the hardware saw
+    # during the burst. This papers over noise/ringing; it does not fix it --
+    # see THRESHOLD_V comment above for the actual fixes (ground wire,
+    # external debounce/Schmitt buffer).
+    DEBOUNCE_POLL_S = 0.02
+    DEBOUNCE_SETTLE_READS = 3
+    DEBOUNCE_MAX_WAIT_S = 2.0  # give up waiting for settle if the line never stops moving
+
     log = _log
 
     def check_err(self, inst, context=""):
@@ -562,6 +577,10 @@ class Counter34980aControl():
         inst.write(f"COUN:TOT:CLE:IMM (@{self.COUNTER_CHANNEL})")
         self.check_err(inst, "after COUN:TOT:CLE:IMM")
 
+        # Reset debounce state to match the just-cleared hardware count.
+        self._raw_baseline = 0
+        self._debounced_count = 0
+
         # START the counter. With an internal gate, INITiate triggers counting
         # immediately. Without this, a correctly-configured totalizer reads 0.
         inst.write(f"COUN:INIT (@{self.COUNTER_CHANNEL})")
@@ -583,6 +602,53 @@ class Counter34980aControl():
         except ValueError:
             self.log.info(f"unexpected totalizer response: {resp!r}")
             return None
+
+    def read_count_debounced(self, inst):
+        """Logical, debounced count: advances by exactly 1 per real toggle,
+        collapsing any chatter/ringing burst the hardware counted along the
+        way. Requires configure() to have been called first (sets up
+        _raw_baseline/_debounced_count).
+
+        Blocks for up to DEBOUNCE_SETTLE_READS * DEBOUNCE_POLL_S while the
+        raw count is actively changing -- fine at the toggle cadence this
+        counter is used at (seconds between toggles), not meant for
+        high-rate signals. If the raw count never stops moving within
+        DEBOUNCE_MAX_WAIT_S (e.g. a floating line chattering continuously,
+        per the known limits on THRESHOLD_V above), gives up and returns the
+        last accepted logical count rather than blocking forever -- that
+        state means the signal isn't valid yet, not that a toggle happened.
+        """
+        settled = None
+        consecutive = 0
+        deadline = time.monotonic() + self.DEBOUNCE_MAX_WAIT_S
+        while consecutive < self.DEBOUNCE_SETTLE_READS:
+            if time.monotonic() > deadline:
+                self.log.info(
+                    f"read_count_debounced: raw count never settled within "
+                    f"{self.DEBOUNCE_MAX_WAIT_S}s (line likely floating/chattering) -- "
+                    f"returning last logical count {self._debounced_count} without advancing."
+                )
+                return self._debounced_count
+            raw = self.read_count(inst)
+            if raw is None:
+                time.sleep(self.DEBOUNCE_POLL_S)
+                continue
+            if raw == settled:
+                consecutive += 1
+            else:
+                settled = raw
+                consecutive = 1
+            time.sleep(self.DEBOUNCE_POLL_S)
+
+        if settled != self._raw_baseline:
+            self._debounced_count += 1
+            self.log.info(
+                f"debounced toggle detected: raw {self._raw_baseline} -> {settled} "
+                f"(collapsed to +1, logical count = {self._debounced_count})"
+            )
+            self._raw_baseline = settled
+
+        return self._debounced_count
 
 
 class MultiCounterControl():

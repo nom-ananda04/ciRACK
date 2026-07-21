@@ -15,7 +15,7 @@ def run(daq, inst, publish, state):
         state["counter"] = counter
         state["last_count"] = None
     counter = state["counter"]
-    count = counter.read_count(inst)
+    count = counter.read_count_debounced(inst)
     if count is not None:
         if count != state["last_count"]:
             counter.log.info(f"count = {count}")
