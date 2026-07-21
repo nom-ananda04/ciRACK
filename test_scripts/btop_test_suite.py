@@ -552,26 +552,26 @@ class Counter34980aControl():
         inst.write(f"COUN:GATE:SOUR INT,(@{self.COUNTER_CHANNEL})")
         self.check_err(inst, "after COUN:GATE:SOUR INT")
 
-        # GATE:POL is no longer written here (the INVerted workaround was
-        # removed), but it's PERSISTENT instrument state -- like the CLK
-        # output that stayed on across script runs -- so not writing it does
-        # NOT reset it. If a previous run ever set it to INVerted, it will
-        # stay INVerted until something explicitly writes NORMal or the
-        # instrument is power-cycled. Read it back and fail loudly rather
-        # than silently counting on the wrong half of the waveform again.
+        # GATE:POL is PERSISTENT instrument state -- like the CLK output that
+        # stayed on across script runs -- so leaving it unwritten just
+        # inherits whatever a previous session left behind (confirmed on
+        # real hardware: it was still INVerted and free-running at ~900k
+        # counts/sec with nothing toggled, gate wide open). Write NORMal
+        # explicitly every configure() call so it can never drift again --
+        # no more depending on "did the last run leave this in a good state."
+        # {NORMal|INVerted}
+        inst.write(f"COUN:GATE:POL NORM,(@{self.COUNTER_CHANNEL})")
+        self.check_err(inst, "after COUN:GATE:POL NORM")
+
         gate_pol_readback = self.safe_query(inst, f"COUN:GATE:POL? (@{self.COUNTER_CHANNEL})")
         if "NORM" in gate_pol_readback.upper():
             self.log.info(f"Gate polarity readback confirmed: {gate_pol_readback!r} on channel {self.COUNTER_CHANNEL}.")
-        elif "INV" in gate_pol_readback.upper():
-            self.log.error(
-                f"Gate polarity is still INVerted on channel {self.COUNTER_CHANNEL} (leftover from a "
-                f"previous run -- this script no longer writes GATE:POL, but the instrument doesn't "
-                f"reset it on its own). This means the totalizer is STILL only counting while the "
-                f"driven line is LOW, not on the rising edge. Clear it once with: "
-                f"inst.write('COUN:GATE:POL NORM,(@{self.COUNTER_CHANNEL})')."
-            )
         else:
-            self.log.info(f"unexpected COUN:GATE:POL? response: {gate_pol_readback!r}")
+            self.log.error(
+                f"Gate polarity readback mismatch: asked for NORM, instrument reports "
+                f"{gate_pol_readback!r} on channel {self.COUNTER_CHANNEL}. The card is NOT actually "
+                f"configured the way we intended."
+            )
 
         # Read without resetting the count (monotonic). {READ|RRESet}
         inst.write(f"COUN:TOT:TYPE READ,(@{self.COUNTER_CHANNEL})")
