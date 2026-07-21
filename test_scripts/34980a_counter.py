@@ -42,7 +42,7 @@ def main(client: connect_python.Client):
 
         last_count = None
         while True:
-            count = counter.read_count_debounced(inst)
+            count = counter.read_count(inst)
             if count is None:
                 time.sleep(counter.POLL_S)
                 continue
