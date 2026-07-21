@@ -469,14 +469,19 @@ class Counter34980aControl():
     # output HIGH down to ~1.65V (vs. 3.3V unloaded) -- Output High Voltage
     # is only guaranteed down to 2.6V typical at 5mA and drops further under
     # heavier loading. Output LOW stays low regardless (0.01-0.75V across
-    # the sinking range in that same table). NI's counter/PFI driver doesn't
-    # sag like this under the same load, which is the real reason 5V TTL
-    # (NI) clears a threshold that 3.3V CMOS (LabJack) may not -- it's a
-    # drive-strength/loading difference, not just a nominal voltage one.
-    # Dropped from 1.5V to 1.0V for more margin above LOW's worst case
-    # (0.75V) while staying safely below even a badly-drooped HIGH like the
-    # 1.65V worked example above.
-    THRESHOLD_V = 1.0
+    # the sinking range in that same table).
+    #
+    # Measured on real hardware, the USB-6421's drive into this same counter
+    # input is loaded down to a much smaller swing than either the LabJack
+    # or NI's own nominal levels would suggest: LOW = 0.86V, HIGH = 2.4V.
+    # The previous 1.0V threshold sat only ~140mV above that LOW level --
+    # razor-thin margin, easily lost to cable loading/noise, which explains
+    # edges being silently missed despite confirmed-correct wiring. Raised
+    # to 1.5V, roughly centered in the observed 0.86-2.4V swing, giving
+    # ~600+mV of margin on both sides. Still safely below the LabJack's
+    # worst-case drooped HIGH (1.65V) and safely above typical LOW levels,
+    # so this shouldn't affect T4/T7/T8 threshold crossings.
+    THRESHOLD_V = 1.5
     POLL_S = 0.5
 
     log = _log
