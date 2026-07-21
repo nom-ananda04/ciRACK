@@ -469,19 +469,14 @@ class Counter34980aControl():
     # output HIGH down to ~1.65V (vs. 3.3V unloaded) -- Output High Voltage
     # is only guaranteed down to 2.6V typical at 5mA and drops further under
     # heavier loading. Output LOW stays low regardless (0.01-0.75V across
-    # the sinking range in that same table).
-    #
-    # Measured on real hardware, the USB-6421's drive into this same counter
-    # input is loaded down to a much smaller swing than either the LabJack
-    # or NI's own nominal levels would suggest: LOW = 0.86V, HIGH = 2.4V.
-    # The previous 1.0V threshold sat only ~140mV above that LOW level --
-    # razor-thin margin, easily lost to cable loading/noise, which explains
-    # edges being silently missed despite confirmed-correct wiring. Raised
-    # to 1.5V, roughly centered in the observed 0.86-2.4V swing, giving
-    # ~600+mV of margin on both sides. Still safely below the LabJack's
-    # worst-case drooped HIGH (1.65V) and safely above typical LOW levels,
-    # so this shouldn't affect T4/T7/T8 threshold crossings.
-    THRESHOLD_V = 1.5
+    # the sinking range in that same table). NI's counter/PFI driver doesn't
+    # sag like this under the same load, which is the real reason 5V TTL
+    # (NI) clears a threshold that 3.3V CMOS (LabJack) may not -- it's a
+    # drive-strength/loading difference, not just a nominal voltage one.
+    # Dropped from 1.5V to 1.0V for more margin above LOW's worst case
+    # (0.75V) while staying safely below even a badly-drooped HIGH like the
+    # 1.65V worked example above.
+    THRESHOLD_V = 1.0
     POLL_S = 0.5
 
     log = _log
@@ -733,29 +728,10 @@ class MultiCounterControl():
     # -------------------------------------------------------------------
     def count_nidaqmx(self, client, cb_id):
         import nidaqmx
-        import nidaqmx.system
-        from nidaqmx.constants import Edge, CountDirection, LogicFamily
+        from nidaqmx.constants import Edge, CountDirection
 
         counter_chan, _label = self.NI_DEVICES[cb_id]
         source_term = self.NI_SOURCE[cb_id]
-
-        # USB-6421 port0 (which PFI2/DIO2 lives on) ships at NI's factory
-        # default of the 5V logic family (VIH min 3.66V). Confirmed on real
-        # hardware: 4.7V measured on the device's own digital output (5V
-        # family level, not 3.3V), and 3.27V measured AT the PFI2 input pin
-        # itself while the 34980A's CLK was running -- same amplitude as the
-        # T7, which counts fine. So the signal genuinely arrives at the
-        # correct 3.3V-class level; it just never crosses the 5V family's
-        # 3.66V VIH threshold, so it's silently never recognized as a logic
-        # high. Force port0 to the 3.3V/LVTTL family (VIH min 2.00V) before
-        # counting so 3.27V registers correctly. This is a device-wide port
-        # setting (also affects DO/trigger), not task-specific, so it's
-        # reapplied every time in case a reset put the device back at 5V.
-        if cb_id == self.CB_USB6421:
-            device_name = counter_chan.split("/")[0]
-            device = nidaqmx.system.Device(device_name)
-            device.di_ports[0].dig_port_logic_family = LogicFamily.THREE_POINT_THREE_V
-            self.log.info(f"{device_name}: forced port0 logic family to 3.3V (was defaulting to 5V).")
 
         with nidaqmx.Task() as task:
             task.ci_channels.add_ci_count_edges_chan(
