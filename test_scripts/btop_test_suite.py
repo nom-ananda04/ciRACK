@@ -728,10 +728,29 @@ class MultiCounterControl():
     # -------------------------------------------------------------------
     def count_nidaqmx(self, client, cb_id):
         import nidaqmx
-        from nidaqmx.constants import Edge, CountDirection
+        import nidaqmx.system
+        from nidaqmx.constants import Edge, CountDirection, LogicFamily
 
         counter_chan, _label = self.NI_DEVICES[cb_id]
         source_term = self.NI_SOURCE[cb_id]
+
+        # USB-6421 port0 (which PFI2/DIO2 lives on) ships at NI's factory
+        # default of the 5V logic family (VIH min 3.66V). Confirmed on real
+        # hardware: 4.7V measured on the device's own digital output (5V
+        # family level, not 3.3V), and 3.27V measured AT the PFI2 input pin
+        # itself while the 34980A's CLK was running -- same amplitude as the
+        # T7, which counts fine. So the signal genuinely arrives at the
+        # correct 3.3V-class level; it just never crosses the 5V family's
+        # 3.66V VIH threshold, so it's silently never recognized as a logic
+        # high. Force port0 to the 3.3V/LVTTL family (VIH min 2.00V) before
+        # counting so 3.27V registers correctly. This is a device-wide port
+        # setting (also affects DO/trigger), not task-specific, so it's
+        # reapplied every time in case a reset put the device back at 5V.
+        if cb_id == self.CB_USB6421:
+            device_name = counter_chan.split("/")[0]
+            device = nidaqmx.system.Device(device_name)
+            device.di_ports[0].dig_port_logic_family = LogicFamily.THREE_POINT_THREE_V
+            self.log.info(f"{device_name}: forced port0 logic family to 3.3V (was defaulting to 5V).")
 
         with nidaqmx.Task() as task:
             task.ci_channels.add_ci_count_edges_chan(
