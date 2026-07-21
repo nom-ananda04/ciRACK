@@ -602,22 +602,31 @@ class MultiCounterControl():
     CB_CDAQ = "count_cdaq"
 
     # --- LabJack config ---------------------------------------------------------
-    # CIO2 == DIO18 on T4/T7/T8. Index 8 ("Interrupt Counter") is NOT valid on
+    # CIO2 == DIO18 on T4/T7. Index 8 ("Interrupt Counter") is NOT valid on
     # DIO18 for any of these models -- its capable-pin list is DIO4-9 (T4),
     # DIO0/1/2/3/6/7 (T7), DIO0-15 (T8). Using it here caused LJM error 2553
     # EF_PIN_TYPE_MISMATCH on the T4 (and would fail the same way on T7/T8).
     # Index 7 ("High-Speed Counter") is the correct feature for DIO18/CIO2: it
     # needs no clock-source setup, and DIO18 IS in its capable-pin list for the
     # T4 (shared with async-serial, unused here) and T7 ("always available").
-    # NOTE: the T8's index-7 capable list is DIO6/7/8/10/13/14/15 -- DIO18 is
-    # not in it either, so the T8 genuinely cannot hardware-count on CIO2 with
-    # any DIO-EF feature; it needs a rewire to one of its capable pins (or a
-    # software-polling fallback) before CB_T8 will work here.
     # See LabJack's DIO-EF table:
     # https://support.labjack.com/docs/13-2-dio-extended-features-t-series-datasheet
     # and https://support.labjack.com/docs/configuring-reading-a-counter
+    #
+    # T8 exception: the T8's index-7 capable list is DIO6/7/8/10/13/14/15 --
+    # DIO18 is not in it (nor in index 8's 0-15 range), so the T8 cannot
+    # hardware-count on CIO2/DIO18 at all (confirmed on real hardware: LJM
+    # error 2550 EF_DIO_HAS_NO_TNC_FEATURES). Requires a physical rewire of
+    # the T8's sense line to a capable pin -- DIO6 (FIO6) is used here since
+    # it's free elsewhere in this project and valid for index 7. Move the
+    # signal on the rack from the T8's CIO2 terminal to its FIO6 terminal to
+    # match. LJ_DIO_OVERRIDES lets a device use a different pin than the
+    # LJ_DIO default without touching count_labjack's shared logic.
     LJ_DIO = 18
     LJ_EF_INDEX = 7
+    LJ_DIO_OVERRIDES = {
+        CB_T8: 6,   # T8 rewired to FIO6/DIO6 -- see note above
+    }
     LABJACKS = {
         CB_T4: ("T4", "440020473"),
         CB_T7: ("T7", "470041016"),
@@ -684,23 +693,24 @@ class MultiCounterControl():
         from labjack import ljm
 
         dev_type, serial = self.LABJACKS[cb_id]
+        dio = self.LJ_DIO_OVERRIDES.get(cb_id, self.LJ_DIO)
         handle = ljm.openS(dev_type, "ANY", serial)
         try:
             info = ljm.getHandleInfo(handle)
-            self.log.info(f"Opened LabJack {dev_type} (serial {serial}); counting CIO2/DIO{self.LJ_DIO}")
+            self.log.info(f"Opened LabJack {dev_type} (serial {serial}); counting DIO{dio}")
 
-            # Configure DIO-EF edge counter on the CIO2 line.
-            ljm.eWriteName(handle, f"DIO{self.LJ_DIO}_EF_ENABLE", 0)     # disable to (re)configure
-            ljm.eWriteName(handle, f"DIO{self.LJ_DIO}_EF_INDEX", self.LJ_EF_INDEX)  # 8 = interrupt counter
-            ljm.eWriteName(handle, f"DIO{self.LJ_DIO}_EF_ENABLE", 1)     # enable
+            # Configure DIO-EF edge counter on this device's counting line.
+            ljm.eWriteName(handle, f"DIO{dio}_EF_ENABLE", 0)     # disable to (re)configure
+            ljm.eWriteName(handle, f"DIO{dio}_EF_INDEX", self.LJ_EF_INDEX)  # 7 = high-speed counter
+            ljm.eWriteName(handle, f"DIO{dio}_EF_ENABLE", 1)     # enable
 
-            self.log.info("Ready. Counting rising edges on LabJack CIO2.")
+            self.log.info(f"Ready. Counting rising edges on LabJack DIO{dio}.")
             last = None
             while True:
                 if self.selected_checkbox(client) != cb_id:
                     self.log.info("Selection changed; stopping LabJack counter.")
                     return
-                count = int(ljm.eReadName(handle, f"DIO{self.LJ_DIO}_EF_READ_A"))
+                count = int(ljm.eReadName(handle, f"DIO{dio}_EF_READ_A"))
                 if count != last:
                     self.log.info(f"count = {count}")
                     last = count
@@ -708,7 +718,7 @@ class MultiCounterControl():
                 time.sleep(self.POLL_S)
         finally:
             try:
-                ljm.eWriteName(handle, f"DIO{self.LJ_DIO}_EF_ENABLE", 0)
+                ljm.eWriteName(handle, f"DIO{dio}_EF_ENABLE", 0)
             except Exception:
                 pass
             ljm.close(handle)
