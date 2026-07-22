@@ -9,10 +9,13 @@ PSUControl.apply_selection() enforces this with break-before-make: every
 non-selected device gets safe_off() BEFORE the newly-selected device gets
 configure()'d, so there's never a moment where two are commanded on at
 once. If the eLoad is the selected device, its operating mode is ALSO
-checkbox-driven (PSUControl.CB_MODE_CC/CV/CR/CP) -- changing the mode
-checkbox while the eLoad is already selected disables its output, applies
-the new mode, and re-enables it (same break-before-make principle, one
-level down).
+checkbox-driven (PSUControl.CB_MODE_CC/CV/CR/CP), and each mode has its own
+level text box (PSUControl.LEVEL_FIELD_CC/CV/CR/CP -- Amps/Volts/Ohms/Watts
+respectively, validated against PSUControl.LEVEL_RANGE_BY_MODE's reasonable
+per-mode caps for this rig) -- changing the mode checkbox or the current
+mode's level text box while the eLoad is already selected disables its
+output, applies the new mode/level, and re-enables it (same
+break-before-make principle, one level down).
 
 All three devices are sensed (voltage/current read + streamed to Connect)
 every pass regardless of which one is actively selected -- the two
@@ -50,11 +53,12 @@ def main(client: connect_python.Client):
     # selection applied yet," so the first pass always acts (everything
     # starts/stays off if nothing is checked).
     interlock_state = {}
-    # Tracks the eLoad's own last-applied mode separately, so a mode-only
-    # change while the eLoad stays selected still gets applied (apply_
-    # selection() only reacts to a DEVICE change, not a mode change within
-    # the same selected device).
+    # Tracks the eLoad's own last-applied mode/level separately, so a
+    # mode-only or level-only change while the eLoad stays selected still
+    # gets applied (apply_selection() only reacts to a DEVICE change, not a
+    # mode/level change within the same selected device).
     last_eload_mode = None
+    last_eload_level = None
 
     try:
         bk_ctl.log.info(
@@ -62,43 +66,58 @@ def main(client: connect_python.Client):
             f"({bk_ctl.cb_id!r} / {n5745a_ctl.cb_id!r} / {eload_ctl.cb_id!r}); "
             f"if eLoad is selected, also check ONE mode checkbox "
             f"({eload_ctl.CB_MODE_CC!r} / {eload_ctl.CB_MODE_CV!r} / "
-            f"{eload_ctl.CB_MODE_CR!r} / {eload_ctl.CB_MODE_CP!r})."
+            f"{eload_ctl.CB_MODE_CR!r} / {eload_ctl.CB_MODE_CP!r}) and set its "
+            f"matching level text box ({eload_ctl.LEVEL_FIELD_CC!r} / "
+            f"{eload_ctl.LEVEL_FIELD_CV!r} / {eload_ctl.LEVEL_FIELD_CR!r} / "
+            f"{eload_ctl.LEVEL_FIELD_CP!r} -- see PSUControl.LEVEL_RANGE_BY_MODE "
+            f"for this rig's reasonable per-mode caps)."
         )
         while True:
             try:
-                # Determine the eLoad's checkbox-selected mode BEFORE
-                # running the interlock, and set it on the instance now --
-                # if apply_selection() below ends up selecting/reselecting
-                # the eLoad, its own configure() call already uses this
-                # fresh mode, instead of whatever stale mode was set last
-                # time (which would otherwise mean briefly enabling with
-                # the WRONG mode, then immediately having to disable and
-                # reconfigure again to fix it).
+                # Determine the eLoad's checkbox-selected mode AND its
+                # matching level field BEFORE running the interlock, and
+                # set both on the instance now -- if apply_selection()
+                # below ends up selecting/reselecting the eLoad, its own
+                # configure() call already uses this fresh mode/level,
+                # instead of whatever was set last time (which would
+                # otherwise mean briefly enabling with the WRONG mode/
+                # level, then immediately having to disable and
+                # reconfigure again to fix it). selected_level() validates
+                # against LEVEL_RANGE_BY_MODE and raises ValueError (loud,
+                # not silently clamped) if the text box holds something
+                # outside this rig's reasonable cap for that mode.
                 mode = eload_ctl.selected_mode(client)
+                level = eload_ctl.selected_level(client, mode)
                 mode_changed = mode != last_eload_mode
+                level_changed = level != last_eload_level
                 eload_ctl.mode = mode
+                eload_ctl.level = level
 
                 was_selected = interlock_state.get("last_selected") is eload_ctl
                 selected = PSUControl.apply_selection(client, group, sessions, interlock_state)
 
                 if selected is eload_ctl:
                     # apply_selection() only reacts to a DEVICE change, not
-                    # a mode change within the same already-selected
-                    # device -- if the eLoad was ALREADY selected and just
-                    # the mode changed, reconfigure it here (break-before-
-                    # make within the eLoad itself, same principle as the
-                    # device-level interlock above). If the eLoad was just
-                    # newly selected this pass, apply_selection() already
-                    # configured it with the fresh mode above -- nothing
-                    # more to do.
-                    if was_selected and mode_changed:
-                        eload_ctl.log.info(f"eLoad mode changed: "
-                                            f"{last_eload_mode.value if last_eload_mode else None} -> {mode.value}")
+                    # a mode/level change within the same already-selected
+                    # device -- if the eLoad was ALREADY selected and
+                    # either the mode or the level changed, reconfigure it
+                    # here (break-before-make within the eLoad itself, same
+                    # principle as the device-level interlock above). If
+                    # the eLoad was just newly selected this pass,
+                    # apply_selection() already configured it with the
+                    # fresh mode/level above -- nothing more to do.
+                    if was_selected and (mode_changed or level_changed):
+                        eload_ctl.log.info(
+                            f"eLoad mode/level changed: "
+                            f"{last_eload_mode.value if last_eload_mode else None}/{last_eload_level} -> "
+                            f"{mode.value}/{level}")
                         eload_ctl.safe_off(sessions[eload_ctl])
                         eload_ctl.configure(sessions[eload_ctl])
                     last_eload_mode = mode
+                    last_eload_level = level
                 else:
-                    last_eload_mode = None   # re-selecting eLoad later always re-applies the current checkbox mode fresh
+                    last_eload_mode = None   # re-selecting eLoad later always re-applies the current checkbox mode/level fresh
+                    last_eload_level = None
 
                 for ctl, instrument in sessions.items():
                     voltage, current = ctl.read_channel(instrument)

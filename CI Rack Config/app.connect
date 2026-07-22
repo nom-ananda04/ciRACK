@@ -1083,7 +1083,7 @@ tiles:
               time_window: 30s
       - height: null
         columns:
-        - width: null
+        - width: 1.0
           tile:
             layout: pane
             id: 6f1a2f3e-9b4d-4a2c-8e7a-1d5c6b3f8a90
@@ -1120,6 +1120,30 @@ tiles:
                 max_log_lines: 10000
                 id: btop_dc_psu
               show_output_column: true
+        - width: 1.0
+          tile:
+            layout: pane
+            id: 9d1e3f5a-7b2c-4d6e-8f0a-3c5e7f9a1b3d
+            title: eLoad Levels
+            direction: vertical
+            should_fill: true
+            elements:
+            - input: text
+              id: eload_level_cc
+              label: eLoad CC level (Amps, 0-4)
+              default: '1.0'
+            - input: text
+              id: eload_level_cv
+              label: eLoad CV level (Volts, 0-30)
+              default: '12.0'
+            - input: text
+              id: eload_level_cr
+              label: eLoad CR level (Ohms, 0.1-1000)
+              default: '24.0'
+            - input: text
+              id: eload_level_cp
+              label: eLoad CP level (Watts, 0-120)
+              default: '6.0'
 left_panel: null
 right_panel: null
 bottom_panel: null

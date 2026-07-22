@@ -933,6 +933,67 @@ class PSUControl():
         CB_MODE_CP: LoadMode.CP,
     }
 
+    # --- eLoad level text boxes (one per mode, since each mode's level is a
+    # different physical quantity -- A/V/Ohm/W) and their reasonable caps
+    # for THIS rig -- must match the ids in app.connect. These are NOT the
+    # 8514B's own hardware limits (it accepts up to 120V/240A/1500W per its
+    # datasheet, and CR down to 0.05 Ohm) -- they're deliberately tighter,
+    # because the actual sources on this rig (BK9115, N5745A) are never run
+    # above the N5745A's own 30V hardware ceiling, and current is already
+    # capped at SAFE_CURRENT_CEILING_A by the Phoenix Contact relay limit
+    # above. Keeping the eLoad's caps consistent with what this rig's PSUs
+    # can actually deliver means a fat-fingered UI value can't command the
+    # load to try to sink far more than any connected source here could
+    # ever supply.
+    LEVEL_FIELD_CC = "eload_level_cc"
+    LEVEL_FIELD_CV = "eload_level_cv"
+    LEVEL_FIELD_CR = "eload_level_cr"
+    LEVEL_FIELD_CP = "eload_level_cp"
+    LEVEL_FIELD_BY_MODE = {
+        LoadMode.CC: LEVEL_FIELD_CC,
+        LoadMode.CV: LEVEL_FIELD_CV,
+        LoadMode.CR: LEVEL_FIELD_CR,
+        LoadMode.CP: LEVEL_FIELD_CP,
+    }
+    ELOAD_CV_MAX_V = 30.0        # >= N5745A's own 30V hardware max; BK9115 tops out at 80V but is never run that high here
+    ELOAD_CR_MIN_OHM = 0.1       # a hair above the 8514B's own low-range CR floor (0.05 Ohm)
+    ELOAD_CR_MAX_OHM = 1000.0    # generous headroom for light-load/high-Z tests, well under the 8514B's own 7.5kOhm high-range ceiling
+    ELOAD_CP_MAX_W = ELOAD_CV_MAX_V * SAFE_CURRENT_CEILING_A   # 120W: the most this rig's relay-limited current times its max PSU voltage could ever actually deliver
+    # (min, max, unit) per mode -- used both to validate a UI value and to
+    # build a clear error message. CC's max intentionally equals
+    # SAFE_CURRENT_CEILING_A so a UI-entered CC level can never exceed the
+    # same relay-safety ceiling _enforce_relay_safe_current() enforces
+    # again (belt-and-suspenders) inside _configure_eload().
+    LEVEL_RANGE_BY_MODE = {
+        LoadMode.CC: (0.0, SAFE_CURRENT_CEILING_A, "A"),
+        LoadMode.CV: (0.0, ELOAD_CV_MAX_V, "V"),
+        LoadMode.CR: (ELOAD_CR_MIN_OHM, ELOAD_CR_MAX_OHM, "Ohm"),
+        LoadMode.CP: (0.0, ELOAD_CP_MAX_W, "W"),
+    }
+
+    def selected_level(self, client, mode=None) -> float:
+        """eLoad only: read the text field for `mode` (or self.mode if not
+        given -- same optional-explicit-mode idiom as callers needing to
+        avoid the stale-self.mode ordering bug documented in
+        btop_dc_psu.py), parse it as a float, and validate it against
+        LEVEL_RANGE_BY_MODE -- raises ValueError (loud, not a silent clamp
+        -- same philosophy as _enforce_relay_safe_current) if the field is
+        non-numeric or outside this rig's reasonable cap for that mode.
+        Falls back to self.level (this instance's factory default) if the
+        field is blank/None, so a headless caller without Connect wired up
+        still gets a sane value."""
+        mode = self.mode if mode is None else mode
+        field_id = self.LEVEL_FIELD_BY_MODE[mode]
+        raw = client.get_value(field_id)
+        if raw in (None, ""):
+            return self.level
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            raise ValueError(f"{field_id}: {raw!r} is not a valid number")
+        self._enforce_level_range(mode, value, field_id)
+        return value
+
     def selected_mode(self, client) -> LoadMode:
         """eLoad only: return the LoadMode for whichever mode checkbox is
         checked (first if several, same warn-and-pick-first idiom as
@@ -1010,6 +1071,8 @@ class PSUControl():
 
         if mode is LoadMode.CC:
             self._enforce_relay_safe_current(level, f"{self.name}.configure level (CC mode)")
+        else:
+            self._enforce_level_range(mode, level, f"{self.name}.configure level ({mode.value} mode)")
 
         eload.set_mode(mode, channel=channel)
         eload.set_level(level, channel=channel)
@@ -1077,6 +1140,23 @@ class PSUControl():
                 f"requested current, or if you're certain this specific circuit "
                 f"never routes through those relays, change SAFE_CURRENT_CEILING_A "
                 f"deliberately rather than bypassing this check at the call site."
+            )
+
+    def _enforce_level_range(self, mode, level, context):
+        """Raise ValueError if `level` falls outside this rig's reasonable
+        cap for `mode` (LEVEL_RANGE_BY_MODE) -- same loud-not-silent
+        philosophy as _enforce_relay_safe_current, which handles CC mode
+        specifically (it's about the Phoenix Contact relay rating, not a
+        generic UI-input cap)."""
+        min_v, max_v, unit = self.LEVEL_RANGE_BY_MODE[mode]
+        if not (min_v <= level <= max_v):
+            raise ValueError(
+                f"{context}: {level}{unit} is outside this rig's reasonable "
+                f"cap of {min_v}-{max_v}{unit} for {mode.value} mode -- "
+                f"refusing to configure. Adjust the requested level, or if "
+                f"you're certain a wider range is safe for this specific "
+                f"test, change LEVEL_RANGE_BY_MODE deliberately rather than "
+                f"bypassing this check."
             )
 
     def _try_enable_hardware_ocp(self, psu, level_a, channel):
