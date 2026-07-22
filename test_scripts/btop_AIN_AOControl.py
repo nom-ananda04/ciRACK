@@ -1,18 +1,20 @@
 import math
-import time 
+import time
+from datetime import datetime
 from types import SimpleNamespace
 import connect_python
 import pyvisa
 from instro.daq import InstroDAQ
 from instro.daq.drivers.keysight_34980a import Keysight34980A  # ADJUST PATH if needed
 from instro.daq.types import DigitalPortWidth, Direction, Logic
-from btop_test_suite import AIN_AOControl as daqTrayControl
+from btop_test_suite import AIN_AOControl as daqTrayControl, SafeToTestControl
 
 
 @connect_python.main
 def main(client: connect_python.Client):
     print(pyvisa.ResourceManager().list_resources())
     tray = daqTrayControl()
+    safe_ctl = SafeToTestControl()
     daq = tray._create_daq()
     print(daq.driver._visa.query(f"SYST:CTYP? {tray.MUX_SLOT}").strip())
 
@@ -33,6 +35,15 @@ def main(client: connect_python.Client):
 
         last_selected = None
         while True:
+            # SafeToTestControl.is_safe() -- see btop_test_suite.py -- reads
+            # the rack's relay lines (already streamed by Connect's own
+            # NI-DAQmx connector for the health-monitor USB-6002); ANY relay
+            # energized forces every crosspoint open regardless of what's
+            # checked, same gate PSUControl.apply_selection() uses in
+            # btop_dc_psu.py.
+            is_safe = safe_ctl.is_safe(client)
+            client.stream(tray.STREAM_ID, datetime.now(), 1.0 if is_safe else 0.0, name="safe_to_test")
+
             # Find which checkbox is checked. Only one source may drive the
             # shared TB_AO_MUX bus at a time; if several are checked, take the
             # first and warn.
@@ -42,11 +53,14 @@ def main(client: connect_python.Client):
             if len(selected) > 1:
                 print(f"WARNING: multiple sources checked {selected}; using first ({selected[0]})")
             target = selected[0] if selected else None
+            if not is_safe:
+                target = None   # NOT safe to test -- refuse to route any source, no matter what's checked
 
             if target != last_selected:
                 if target is None:
                     tray._open_all(daq)
-                    print("No source selected -- all crosspoints open")
+                    print("NOT safe to test -- all crosspoints forced open" if not is_safe
+                          else "No source selected -- all crosspoints open")
                 else:
                     dac_ch = tray._chan(tray.BANK1_BASE, target)
                     ok = tray.connect_dac(daq, dac_ch)

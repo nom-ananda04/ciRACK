@@ -1202,7 +1202,7 @@ class PSUControl():
         return checked[0]
 
     @classmethod
-    def apply_selection(cls, client, group, sessions, state):
+    def apply_selection(cls, client, group, sessions, state, is_safe=True):
         """Read the checkbox group and, ONLY if the selection changed since
         the last call (tracked in state['last_selected'] -- same "small
         dict this call owns" idiom every continuous headless_tests/*.py
@@ -1217,8 +1217,30 @@ class PSUControl():
         IMPORTANT: only put devices in the SAME `group` call that must
         never run together (see class docstring's physical-safety note --
         e.g. the two PSUs, but NOT a PSU + the eLoad, which normally run
-        together on purpose)."""
-        selected = cls.selected(client, group)
+        together on purpose).
+
+        `is_safe` (default True, for callers with no safety gate wired up)
+        -- when False, EVERY device in `group` is forced safe_off() and
+        NONE is configured, no matter what's checked -- same as if nothing
+        were selected. The checked device is deliberately NOT remembered as
+        "already applied" while unsafe, so the instant it becomes safe
+        again, whatever's checked at that moment gets freshly
+        break-before-make configured, exactly like an ordinary selection
+        change. See SafeToTestControl.is_safe() for where this comes from
+        on this rig (the six Phoenix Contact relay lines on the
+        health-monitor USB-6002, already streamed by Connect's own
+        NI-DAQmx connector -- ANY relay energized means NOT safe)."""
+        checked = cls.selected(client, group)
+        selected = checked if is_safe else None
+
+        if not is_safe and state.get("last_safe", True):
+            cls.log.info(
+                f"NOT safe to test -- forcing every device off. Checked device "
+                f"{getattr(checked, 'name', None)!r} will NOT be configured until "
+                f"safe to test again."
+            )
+        state["last_safe"] = is_safe
+
         if selected is state.get("last_selected", "__unset__"):
             return selected
 
@@ -1234,3 +1256,66 @@ class PSUControl():
 
         state["last_selected"] = selected
         return selected
+
+
+class SafeToTestControl():
+    """Read-only 'safe to test' gate for the rack, derived from the six
+    Phoenix Contact relay control lines on the health-monitor USB-6002
+    (Connect stream id 'health_monitor_daq', channels
+    dc_panel_daq/port0/line0-5 -- see
+    'CI Rack Config/health-monitor-usb-6002.ni-daqmx.ni-daqmx.json').
+
+    Deliberately does NOT open its own instro/NI-DAQmx session on that
+    device: the USB-6002 is already exclusively owned by Connect's own
+    built-in NI-DAQmx device connector (there is no instro-based Python
+    script touching it anywhere in this repo -- confirmed). A second,
+    competing session on the same physical device would risk a DAQmx
+    resource conflict. Instead this reads the SAME already-published
+    telemetry via connect_python's client.get_channel_values() -- a read
+    of Connect's own stream buffer, not new hardware I/O -- so there's
+    nothing to conflict with.
+
+    Per rig convention: safe to test only if EVERY monitored relay line
+    currently reads 0 (all six de-energized); ANY line reading 1 means NOT
+    safe. If the stream hasn't published anything yet, or is missing any
+    one of the monitored channels, this fails SAFE -- treats the unknown
+    state as NOT safe rather than assuming the best -- same loud-refuse,
+    don't-silently-assume philosophy as PSUControl's
+    _enforce_relay_safe_current()/_enforce_level_range() above."""
+
+    HEALTH_MONITOR_STREAM_ID = "health_monitor_daq"
+    RELAY_LINE_CHANNELS = [
+        "dc_panel_daq/port0/line0",
+        "dc_panel_daq/port0/line1",
+        "dc_panel_daq/port0/line2",
+        "dc_panel_daq/port0/line3",
+        "dc_panel_daq/port0/line4",
+        "dc_panel_daq/port0/line5",
+    ]
+
+    log = _log
+
+    def is_safe(self, client) -> bool:
+        """NAND all RELAY_LINE_CHANNELS together: True only if every one of
+        them currently reads 0 (falsy). Returns False (fail-safe) if the
+        health-monitor stream has never published data at all, or if any
+        individual monitored channel has no value yet -- an unknown relay
+        state is never treated as safe."""
+        values = client.get_channel_values(self.HEALTH_MONITOR_STREAM_ID, channels=self.RELAY_LINE_CHANNELS)
+        if not values:
+            self.log.info(f"{self.HEALTH_MONITOR_STREAM_ID}: no data yet -- treating as NOT safe to test")
+            return False
+
+        energized = []
+        for channel in self.RELAY_LINE_CHANNELS:
+            if channel not in values:
+                self.log.info(f"{self.HEALTH_MONITOR_STREAM_ID}.{channel}: no value yet -- "
+                               f"treating as NOT safe to test")
+                return False
+            if bool(values[channel]["value"]):
+                energized.append(channel)
+
+        if energized:
+            self.log.info(f"NOT safe to test -- energized relay line(s): {energized}")
+            return False
+        return True
