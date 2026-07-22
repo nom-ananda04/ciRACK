@@ -1028,6 +1028,50 @@ tiles:
                 max_log_lines: 10000
                 id: daq_counter
               show_output_column: true
+  - title: SOURCE SELECT
+    allow_popout: true
+    tile:
+      layout: grid
+      rows:
+      - height: null
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 6f1a2f3e-9b4d-4a2c-8e7a-1d5c6b3f8a90
+            title: Script Controls
+            direction: vertical
+            should_fill: true
+            elements:
+            - input: checkbox
+              id: dev_select_bk9115
+              label: Select BK9115 PSU
+            - input: checkbox
+              id: dev_select_n5745a
+              label: Select N5745A PSU
+            - input: checkbox
+              id: dev_select_eload_8514b
+              label: Select BK 8514B eLoad
+            - input: checkbox
+              id: eload_mode_cc
+              label: eLoad Mode CC
+            - input: checkbox
+              id: eload_mode_cv
+              label: eLoad Mode CV
+            - input: checkbox
+              id: eload_mode_cr
+              label: eLoad Mode CR
+            - input: checkbox
+              id: eload_mode_cp
+              label: eLoad Mode CP
+            - controls: script_table
+              scripts:
+              - label: null
+                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\btop_dc_psu.py
+                args: []
+                max_log_lines: 10000
+                id: btop_dc_psu
+              show_output_column: true
 left_panel: null
 right_panel: null
 bottom_panel: null
