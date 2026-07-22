@@ -900,18 +900,8 @@ tiles:
             direction: vertical
             should_fill: true
             elements:
-            - plot: line
-              stream_id: safe_to_test
-              channels:
-              - safe_to_test
-              colors: []
-              legend_placement: bottom_left
-              y_label: safe_to_test.safe_to_test
-              x_format: timestamp
-              x_time_display: Local
-              x_scale: linear
-              y_scale: linear
-              time_window: 30s
+            - display: logs
+              script_id: btop_safe_to_test
             - controls: script_table
               scripts:
               - label: null
