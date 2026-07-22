@@ -318,7 +318,7 @@ tiles:
             - controls: script_table
               scripts:
               - label: DAQ Control
-                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\btop_AIN_AOControl.py
+                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\btop_daq_control.py
                 args: []
                 max_log_lines: 10000
                 id: null
