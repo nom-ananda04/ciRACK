@@ -902,6 +902,16 @@ tiles:
             elements:
             - display: logs
               script_id: btop_safe_to_test
+      - height: null
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 5b7d9f1a-3c5e-4a7f-9b1d-4f6a8c0e2f4b
+            title: Script Controls
+            direction: vertical
+            should_fill: true
+            elements:
             - controls: script_table
               scripts:
               - label: null
