@@ -1038,6 +1038,54 @@ tiles:
         - width: null
           tile:
             layout: pane
+            id: 8c2d4e6a-1f3b-4c5d-9e7f-2a4b6c8d0e1f
+            title: VOLTAGES
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: psu_tray
+              channels:
+              - myPSU_voltage
+              - n5745a_voltage
+              - eload_8514b_voltage
+              colors: []
+              legend_placement: bottom_left
+              y_label: psu_tray.myPSU_voltage
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: null
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 3b5c7d9e-2a4f-4b6d-8e0f-1c3d5e7f9a2b
+            title: CURRENTS
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: psu_tray
+              channels:
+              - myPSU_current
+              - n5745a_current
+              - eload_8514b_current
+              colors: []
+              legend_placement: bottom_left
+              y_label: psu_tray.myPSU_current
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+      - height: null
+        columns:
+        - width: null
+          tile:
+            layout: pane
             id: 6f1a2f3e-9b4d-4a2c-8e7a-1d5c6b3f8a90
             title: Script Controls
             direction: vertical
