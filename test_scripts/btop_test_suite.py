@@ -1300,21 +1300,31 @@ class SafeToTestControl():
         them currently reads 0 (falsy). Returns False (fail-safe) if the
         health-monitor stream has never published data at all, or if any
         individual monitored channel has no value yet -- an unknown relay
-        state is never treated as safe."""
+        state is never treated as safe. Reports EVERY missing/energized
+        channel in one log line (not just the first one found), so a
+        stuck-unsafe state is diagnosable from the log alone -- e.g. if a
+        specific line was never wired up as an actual input and never
+        publishes, that's immediately visible instead of only showing up
+        one channel at a time across repeated runs."""
         values = client.get_channel_values(self.HEALTH_MONITOR_STREAM_ID, channels=self.RELAY_LINE_CHANNELS)
         if not values:
-            self.log.info(f"{self.HEALTH_MONITOR_STREAM_ID}: no data yet -- treating as NOT safe to test")
+            self.log.info(f"{self.HEALTH_MONITOR_STREAM_ID}: no data yet at all -- "
+                           f"treating as NOT safe to test")
             return False
 
-        energized = []
-        for channel in self.RELAY_LINE_CHANNELS:
-            if channel not in values:
-                self.log.info(f"{self.HEALTH_MONITOR_STREAM_ID}.{channel}: no value yet -- "
-                               f"treating as NOT safe to test")
-                return False
-            if bool(values[channel]["value"]):
-                energized.append(channel)
+        missing = [ch for ch in self.RELAY_LINE_CHANNELS if ch not in values]
+        if missing:
+            self.log.info(
+                f"{self.HEALTH_MONITOR_STREAM_ID}: no value yet for {missing} -- "
+                f"treating as NOT safe to test. If this list never changes across repeated "
+                f"runs, those specific channel(s) are likely never actually publishing "
+                f"(e.g. not wired as inputs, or not enabled in the device config) -- "
+                f"double check '{self.HEALTH_MONITOR_STREAM_ID}' picks up all of "
+                f"{self.RELAY_LINE_CHANNELS}."
+            )
+            return False
 
+        energized = [ch for ch in self.RELAY_LINE_CHANNELS if bool(values[ch]["value"])]
         if energized:
             self.log.info(f"NOT safe to test -- energized relay line(s): {energized}")
             return False
