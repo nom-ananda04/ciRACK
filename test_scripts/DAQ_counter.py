@@ -2,14 +2,13 @@ import time
 from datetime import datetime
 import connect_python
 import pyvisa
-from btop_test_suite import MultiCounterControl, SafeToTestControl
+from btop_test_suite import MultiCounterControl
 
 
 @connect_python.main
 def main(client: connect_python.Client):
 
     counter = MultiCounterControl()
-    safe_ctl = SafeToTestControl()
     counter.log.info("Multi-counter ready. Check ONE device box in the COUNTER TEST tab.")
 
     # Hold a 34980A session open for the whole run to drive the CLK output.
@@ -23,23 +22,14 @@ def main(client: connect_python.Client):
     active = None
     try:
         while True:
-            # SafeToTestControl.is_safe() -- see btop_test_suite.py -- same
-            # relay-line gate as btop_dc_psu.py. CLK is an active output, so
-            # ANDing it into want_clk means it can never be switched ON while
-            # unsafe, and gets switched OFF automatically (via the existing
-            # elif below) the instant it becomes unsafe while already running.
-            is_safe = safe_ctl.is_safe(client)
-            client.stream(counter.STREAM_ID, datetime.now(), 1.0 if is_safe else 0.0, name="safe_to_test")
-
-            # --- CLK output: follow the enable checkbox (gated by is_safe) ---
-            want_clk = bool(client.get_value(counter.CB_CLK)) and is_safe
+            # --- CLK output: follow the enable checkbox ---
+            want_clk = bool(client.get_value(counter.CB_CLK))
             if want_clk and not clk_running:
                 counter.log.info(f"Enabling 34980A CLK output ({counter.CLK_FREQ_HZ} Hz).")
                 counter.clk_on(inst)
                 clk_running = True
             elif not want_clk and clk_running:
-                counter.log.info("Disabling 34980A CLK output"
-                                 + (" -- NOT safe to test." if not is_safe else "."))
+                counter.log.info("Disabling 34980A CLK output.")
                 counter.clk_off(inst)
                 clk_running = False
             counter._clk_state["on"] = clk_running

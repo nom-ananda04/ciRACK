@@ -1202,7 +1202,7 @@ class PSUControl():
         return checked[0]
 
     @classmethod
-    def apply_selection(cls, client, group, sessions, state, is_safe=True):
+    def apply_selection(cls, client, group, sessions, state):
         """Read the checkbox group and, ONLY if the selection changed since
         the last call (tracked in state['last_selected'] -- same "small
         dict this call owns" idiom every continuous headless_tests/*.py
@@ -1217,30 +1217,8 @@ class PSUControl():
         IMPORTANT: only put devices in the SAME `group` call that must
         never run together (see class docstring's physical-safety note --
         e.g. the two PSUs, but NOT a PSU + the eLoad, which normally run
-        together on purpose).
-
-        `is_safe` (default True, for callers with no safety gate wired up)
-        -- when False, EVERY device in `group` is forced safe_off() and
-        NONE is configured, no matter what's checked -- same as if nothing
-        were selected. The checked device is deliberately NOT remembered as
-        "already applied" while unsafe, so the instant it becomes safe
-        again, whatever's checked at that moment gets freshly
-        break-before-make configured, exactly like an ordinary selection
-        change. See SafeToTestControl.is_safe() for where this comes from
-        on this rig (the six Phoenix Contact relay lines on the
-        health-monitor USB-6002, already streamed by Connect's own
-        NI-DAQmx connector -- ANY relay energized means NOT safe)."""
-        checked = cls.selected(client, group)
-        selected = checked if is_safe else None
-
-        if not is_safe and state.get("last_safe", True):
-            cls.log.info(
-                f"NOT safe to test -- forcing every device off. Checked device "
-                f"{getattr(checked, 'name', None)!r} will NOT be configured until "
-                f"safe to test again."
-            )
-        state["last_safe"] = is_safe
-
+        together on purpose)."""
+        selected = cls.selected(client, group)
         if selected is state.get("last_selected", "__unset__"):
             return selected
 
@@ -1259,7 +1237,7 @@ class PSUControl():
 
 
 class SafeToTestControl():
-    """Read-only 'safe to test' gate for the rack, derived from the six
+    """Read-only 'safe to test' WATCHER for the rack, derived from the six
     Phoenix Contact relay control lines on the health-monitor USB-6002
     (Connect stream id 'health_monitor_daq', channels
     dc_panel_daq/port0/line0-5 -- see
@@ -1281,7 +1259,14 @@ class SafeToTestControl():
     one of the monitored channels, this fails SAFE -- treats the unknown
     state as NOT safe rather than assuming the best -- same loud-refuse,
     don't-silently-assume philosophy as PSUControl's
-    _enforce_relay_safe_current()/_enforce_level_range() above."""
+    _enforce_relay_safe_current()/_enforce_level_range() above.
+
+    IMPORTANT: this is a standalone MONITOR only -- it does not gate or
+    control any other script on this rig (an earlier version wired it into
+    PSUControl.apply_selection() as a hard interlock; that was reverted).
+    Run it alongside whatever else is active via its own driver script
+    (btop_safe_to_test.py), which streams a boolean indicator and pops up
+    a Connect notification on every safe<->unsafe transition."""
 
     HEALTH_MONITOR_STREAM_ID = "health_monitor_daq"
     RELAY_LINE_CHANNELS = [
@@ -1292,6 +1277,11 @@ class SafeToTestControl():
         "dc_panel_daq/port0/line4",
         "dc_panel_daq/port0/line5",
     ]
+
+    # Stream id this watcher's own driver script (btop_safe_to_test.py)
+    # publishes the safe_to_test boolean indicator to -- distinct from
+    # HEALTH_MONITOR_STREAM_ID above, which is only ever READ from.
+    STREAM_ID = "safe_to_test"
 
     log = _log
 

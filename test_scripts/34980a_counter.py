@@ -1,13 +1,12 @@
 import time
 import pyvisa
 import connect_python
-from btop_test_suite import Counter34980aControl, SafeToTestControl
+from btop_test_suite import Counter34980aControl
 
 
 @connect_python.main
 def main(client: connect_python.Client):
     counter = Counter34980aControl()
-    safe_ctl = SafeToTestControl()
 
     rm = pyvisa.ResourceManager()
     print(rm.list_resources(), flush=True)
@@ -42,19 +41,7 @@ def main(client: connect_python.Client):
         counter.log.info(f"Ready. Reading totalizer on channel {counter.COUNTER_CHANNEL}.")
 
         last_count = None
-        last_safe = None
         while True:
-            # This script only reads the totalizer -- nothing to actively
-            # gate -- but log the rig's safe-to-test state (see
-            # SafeToTestControl in btop_test_suite.py) whenever it changes,
-            # for consistency/visibility with every other script here. No
-            # STREAM_ID is defined on Counter34980aControl (this script has
-            # never streamed anything to Connect), so this is log-only.
-            is_safe = safe_ctl.is_safe(client)
-            if is_safe != last_safe:
-                counter.log.info(f"safe to test: {is_safe}")
-                last_safe = is_safe
-
             count = counter.read_count(inst)
             if count is None:
                 time.sleep(counter.POLL_S)

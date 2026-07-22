@@ -6,29 +6,17 @@ import pyvisa
 from instro.daq import InstroDAQ
 from instro.daq.drivers.keysight_34980a import Keysight34980A  # ADJUST PATH if needed
 from instro.daq.types import Direction, Logic
-from btop_test_suite import doDriveControl, SafeToTestControl
+from btop_test_suite import doDriveControl
 
 @connect_python.main
 def main(client: connect_python.Client):
     print(pyvisa.ResourceManager().list_resources(), flush=True)
 
     dio = doDriveControl()
-    safe_ctl = SafeToTestControl()
     daq = dio._create_daq()
     try:
         dio._assert_34980a(daq)
         dio.configure_all(daq)
-
-        # SafeToTestControl.is_safe() -- see btop_test_suite.py -- same
-        # relay-line gate as btop_dc_psu.py. This script actively drives
-        # DO0, so refuse to run the toggle sequence at all if any relay is
-        # energized, rather than silently toggling anyway.
-        is_safe = safe_ctl.is_safe(client)
-        client.stream(dio.STREAM_ID, datetime.now(), 1.0 if is_safe else 0.0, name="safe_to_test")
-        if not is_safe:
-            dio.log.info("NOT safe to test -- refusing to drive DO0. Clear the energized relay(s) and re-run.")
-            return
-
         dio.log.info("Ready. Toggling DO0 between 1 and 0, twice.")
 
         HOLD_S = 1.0

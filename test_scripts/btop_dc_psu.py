@@ -21,25 +21,21 @@ All three devices are sensed (voltage/current read + streamed to Connect)
 every pass regardless of which one is actively selected -- the two
 deselected devices will just read ~0V/0A since their outputs are off.
 
-Every pass is ALSO gated by SafeToTestControl.is_safe() (see
-btop_test_suite.py) -- derived from the six Phoenix Contact relay lines on
-the health-monitor USB-6002 (already streamed by Connect's own built-in
-NI-DAQmx connector, read here via client.get_channel_values() rather than
-a second competing hardware session). If ANY relay line is energized,
-apply_selection() forces every device off and configures NONE of them, no
-matter what's checked, until the rig reports safe again.
-
 This file's name predates the eLoad/N5745A interlock (it started as a
 BK9115-only script); kept for import/script-name continuity. Matches this
 project's existing pattern of a thin driver script calling into a shared
 *Control class (see do_send_output.py/doDriveControl,
-DAQ_counter.py/MultiCounterControl)."""
+DAQ_counter.py/MultiCounterControl).
+
+Note: rack-wide relay safety monitoring lives in its own standalone
+script (btop_safe_to_test.py / SafeToTestControl) -- it does not gate this
+script; run it alongside for a live safe-to-test indicator + notification."""
 
 from datetime import datetime
 
 import connect_python
 
-from btop_test_suite import PSUControl, SafeToTestControl
+from btop_test_suite import PSUControl
 
 
 @connect_python.main
@@ -48,7 +44,6 @@ def main(client: connect_python.Client):
     n5745a_ctl = PSUControl.n5745a()
     eload_ctl = PSUControl.eload_8514b()
     group = [bk_ctl, n5745a_ctl, eload_ctl]
-    safe_ctl = SafeToTestControl()
 
     sessions = {}
     for ctl in group:
@@ -102,12 +97,8 @@ def main(client: connect_python.Client):
                 eload_ctl.mode = mode
                 eload_ctl.level = level
 
-                is_safe = safe_ctl.is_safe(client)
-                now = datetime.now()
-                client.stream(PSUControl.STREAM_ID, now, 1.0 if is_safe else 0.0, name="safe_to_test")
-
                 was_selected = interlock_state.get("last_selected") is eload_ctl
-                selected = PSUControl.apply_selection(client, group, sessions, interlock_state, is_safe=is_safe)
+                selected = PSUControl.apply_selection(client, group, sessions, interlock_state)
 
                 if selected is eload_ctl:
                     # apply_selection() only reacts to a DEVICE change, not

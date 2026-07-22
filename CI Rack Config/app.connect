@@ -829,7 +829,7 @@ tiles:
                 max_log_lines: 10000
                 id: null
               show_output_column: true
-  - title: PSU TRAY
+  - title: DC Power Tray
     allow_popout: true
     tile:
       layout: grid
@@ -890,6 +890,36 @@ tiles:
               x_scale: linear
               y_scale: linear
               time_window: 30s
+      - height: null
+        columns:
+        - width: null
+          tile:
+            layout: pane
+            id: 4a6c8e0f-2b4d-4f6e-8a0c-3e5f7a9c1e3f
+            title: Safety Test
+            direction: vertical
+            should_fill: true
+            elements:
+            - plot: line
+              stream_id: safe_to_test
+              channels:
+              - safe_to_test
+              colors: []
+              legend_placement: bottom_left
+              y_label: safe_to_test.safe_to_test
+              x_format: timestamp
+              x_time_display: Local
+              x_scale: linear
+              y_scale: linear
+              time_window: 30s
+            - controls: script_table
+              scripts:
+              - label: null
+                path: C:\Users\Nominal User\Desktop\ciRACK\test_scripts\btop_safe_to_test.py
+                args: []
+                max_log_lines: 10000
+                id: btop_safe_to_test
+              show_output_column: true
   - title: COUNTER TEST - SWITCH
     allow_popout: true
     tile:
@@ -1028,33 +1058,11 @@ tiles:
                 max_log_lines: 10000
                 id: daq_counter
               show_output_column: true
-  - title: SOURCE SELECT
+  - title: PSU Tray
     allow_popout: true
     tile:
       layout: grid
       rows:
-      - height: null
-        columns:
-        - width: null
-          tile:
-            layout: pane
-            id: 2f4b6d8e-0a1c-4e3f-9d5b-7a8c0e2f4b6d
-            title: SAFE TO TEST
-            direction: vertical
-            should_fill: true
-            elements:
-            - plot: line
-              stream_id: psu_tray
-              channels:
-              - safe_to_test
-              colors: []
-              legend_placement: bottom_left
-              y_label: psu_tray.safe_to_test
-              x_format: timestamp
-              x_time_display: Local
-              x_scale: linear
-              y_scale: linear
-              time_window: 30s
       - height: null
         columns:
         - width: null
