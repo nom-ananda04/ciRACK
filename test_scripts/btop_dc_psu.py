@@ -25,11 +25,7 @@ This file's name predates the eLoad/N5745A interlock (it started as a
 BK9115-only script); kept for import/script-name continuity. Matches this
 project's existing pattern of a thin driver script calling into a shared
 *Control class (see do_send_output.py/doDriveControl,
-DAQ_counter.py/MultiCounterControl).
-
-Note: rack-wide relay safety monitoring lives in its own standalone
-script (btop_safe_to_test.py / SafeToTestControl) -- it does not gate this
-script; run it alongside for a live safe-to-test indicator + notification."""
+DAQ_counter.py/MultiCounterControl)."""
 
 from datetime import datetime
 
