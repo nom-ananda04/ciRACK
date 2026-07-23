@@ -1,5 +1,5 @@
 import math
-import time
+import time 
 from types import SimpleNamespace
 import connect_python
 import pyvisa
