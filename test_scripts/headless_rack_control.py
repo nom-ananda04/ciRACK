@@ -11,13 +11,11 @@ from instro.lib.publishers.nominal_core import NominalCorePublisher
 from instro.lib.types import Measurement
 from nominal.core import NominalClient
 
-from btop_test_suite import Counter34980aControl
+from btop_test_suite import doDriveControl
 
 from headless_tests import (
     do_drive,
     di_raster_scan,
-    counter_totalize,
-    multi_counter_clk,
     ain_ao_loopback,
     ain_ao_route,
     fgen_sweep,
@@ -35,7 +33,7 @@ from headless_tests import (
 # this project has always used. Every enabled test gets its own dedicated
 # time slot (see DEFAULT_TEST_DURATION_S below); none of them interleave.
 # ============================================================================
-TEST_MODULES = [do_drive, di_raster_scan, counter_totalize, multi_counter_clk,
+TEST_MODULES = [do_drive, di_raster_scan,
                 ain_ao_loopback, ain_ao_route, fgen_sweep]
 TEST_MODULE_BY_ID = {m.TEST_ID: m for m in TEST_MODULES}
 
@@ -148,7 +146,7 @@ def load_config(path: pathlib.Path) -> dict:
 # counts, etc.) now live in each test's own file under headless_tests/ --
 # only orchestration-level config stays here.
 # ============================================================================
-MAIN_RESOURCE = Counter34980aControl.RESOURCE           # all test files point at the same 34980A frame
+MAIN_RESOURCE = doDriveControl.RESOURCE                 # all test files point at the same 34980A frame
 POLL_S = 0.5
 
 # How long each continuous test gets to run, by itself, before main() tears
