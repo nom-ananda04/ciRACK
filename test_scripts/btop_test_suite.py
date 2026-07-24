@@ -404,7 +404,7 @@ class doDriveControl():
     MODULE_SLOT = 8
     DIO_BANK = 201  # bank 2 -- where DIO is physically wired
 
-    DO_DRIVE_BIT = 0
+    DO_DRIVE_BIT = 7  # pin 7 on bank 2 -- confirmed physical wiring for TB_D_OUT
 
     # Aliases (used as channel/stream names when published)
     DO_DRIVE_ALIAS = "do_drive"
